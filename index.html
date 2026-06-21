@@ -1,1 +1,5623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0C1520">
+<title>Family Budget</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+<style>body{margin:0;background:#0C1520}#loading{color:#74C69D;font-family:Georgia,serif;text-align:center;padding-top:40vh;font-size:14px}</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+</head>
+<body>
+<div id="root"><div id="loading">💰 Loading Family Budget...</div></div>
+<script>
+const {
+  useState,
+  useEffect,
+  useRef,
+  useCallback
+} = React;
+const DEFAULT_CATEGORIES = [{
+  id: "mortgage",
+  label: "Mortgage / Rent",
+  icon: "🏠",
+  group: "Bills"
+}, {
+  id: "electric",
+  label: "Electric",
+  icon: "💡",
+  group: "Bills"
+}, {
+  id: "water",
+  label: "Water",
+  icon: "🚿",
+  group: "Bills"
+}, {
+  id: "internet",
+  label: "Internet",
+  icon: "📡",
+  group: "Bills"
+}, {
+  id: "phone",
+  label: "Phone",
+  icon: "📱",
+  group: "Bills"
+}, {
+  id: "insurance",
+  label: "Insurance",
+  icon: "🛡️",
+  group: "Bills"
+}, {
+  id: "car",
+  label: "Car Payment",
+  icon: "🚗",
+  group: "Bills"
+}, {
+  id: "debt",
+  label: "Debt Payment",
+  icon: "📉",
+  group: "Bills"
+}, {
+  id: "subscriptions",
+  label: "Subscriptions",
+  icon: "🔁",
+  group: "Bills"
+}, {
+  id: "groceries",
+  label: "Groceries",
+  icon: "🛒",
+  group: "Living"
+}, {
+  id: "transport",
+  label: "Transport / Gas",
+  icon: "⛽",
+  group: "Living"
+}, {
+  id: "dining",
+  label: "Dining Out",
+  icon: "🍽️",
+  group: "Living"
+}, {
+  id: "kids",
+  label: "Kids",
+  icon: "👶",
+  group: "Living"
+}, {
+  id: "health",
+  label: "Health / Medical",
+  icon: "❤️",
+  group: "Living"
+}, {
+  id: "clothing",
+  label: "Clothing",
+  icon: "👕",
+  group: "Living"
+}, {
+  id: "personal",
+  label: "Personal Care",
+  icon: "🧴",
+  group: "Living"
+}, {
+  id: "savings",
+  label: "Savings",
+  icon: "🏦",
+  group: "Goals"
+}, {
+  id: "emergency",
+  label: "Emergency Fund",
+  icon: "🆘",
+  group: "Goals"
+}, {
+  id: "sinking",
+  label: "Sinking Funds",
+  icon: "🎯",
+  group: "Goals"
+}, {
+  id: "giving",
+  label: "Giving / Tithe",
+  icon: "🤝",
+  group: "Goals"
+}, {
+  id: "fun",
+  label: "Fun Money",
+  icon: "🎉",
+  group: "Goals"
+}, {
+  id: "misc",
+  label: "Miscellaneous",
+  icon: "📦",
+  group: "Goals"
+}];
+const GROUPS = ["Bills", "Living", "Goals"];
+const GC = {
+  Bills: {
+    accent: "#E07A5F",
+    dim: "#3D1F18",
+    muted: "#7A3A28"
+  },
+  Living: {
+    accent: "#74C69D",
+    dim: "#1B3028",
+    muted: "#3A6A50"
+  },
+  Goals: {
+    accent: "#D4A017",
+    dim: "#332A0A",
+    muted: "#6A5010"
+  }
+};
+const DEFAULT_SINKING = [{
+  id: "sf_car_reg",
+  name: "Car Registration",
+  target: 400,
+  monthly: 34,
+  balance: 0
+}, {
+  id: "sf_xmas",
+  name: "Christmas",
+  target: 800,
+  monthly: 67,
+  balance: 0
+}, {
+  id: "sf_vacation",
+  name: "Vacation",
+  target: 2000,
+  monthly: 167,
+  balance: 0
+}];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const ANNUAL_EXPENSES_DEFAULT = [{
+  id: "ae1",
+  name: "Car Registration",
+  month: 3,
+  amount: 400
+}, {
+  id: "ae2",
+  name: "Tax Preparation",
+  month: 4,
+  amount: 300
+}, {
+  id: "ae3",
+  name: "HOA Annual",
+  month: 1,
+  amount: 600
+}, {
+  id: "ae4",
+  name: "Christmas Gifts",
+  month: 12,
+  amount: 800
+}, {
+  id: "ae5",
+  name: "Vacation",
+  month: 7,
+  amount: 1500
+}, {
+  id: "ae6",
+  name: "Back to School",
+  month: 8,
+  amount: 400
+}];
+const MONEY_MEETING_ITEMS = ["Review last period's income — did anything change?", "Check every category: what went over? What had surplus?", "Review all transactions together — any surprises?", "Check debt balances — did they go down?", "Update sinking fund balances", "Review savings goals progress", "Set the budget for the next pay period together", "Discuss any upcoming big expenses", "Celebrate one financial win from this period 🎉", "Agree on one thing to do differently next period"];
+const fmt = n => new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0
+}).format(n || 0);
+const fmtDec = n => new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+}).format(n || 0);
+const pKey = (y, m, p) => `${y}-${String(m).padStart(2, "0")}-P${p}`;
+const FIREBASE_URL = "https://family-budget-1f7f3-default-rtdb.firebaseio.com";
+async function cloudGet(hid) {
+  try {
+    const r = await fetch(`${FIREBASE_URL}/households/${hid}.json`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+async function cloudSet(hid, data) {
+  try {
+    const r = await fetch(`${FIREBASE_URL}/households/${hid}.json`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        ...data,
+        _ts: Date.now()
+      })
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+function useStorage(key, init) {
+  const [val, setVal] = useState(() => {
+    try {
+      const s = localStorage.getItem(key);
+      return s ? JSON.parse(s) : typeof init === "function" ? init() : init;
+    } catch {
+      return typeof init === "function" ? init() : init;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(val));
+    } catch {}
+  }, [key, val]);
+  return [val, setVal];
+}
+function genHID() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
 
+// ─── CLAUDE API HELPER ────────────────────────────────────────────────────────
+async function callClaude(apiKey, prompt, imageData = null, imageType = null, docData = null) {
+  const content = [];
+  if (imageData && imageType) content.push({
+    type: "image",
+    source: {
+      type: "base64",
+      media_type: imageType,
+      data: imageData
+    }
+  });
+  if (docData) content.push({
+    type: "document",
+    source: {
+      type: "base64",
+      media_type: "application/pdf",
+      data: docData
+    }
+  });
+  content.push({
+    type: "text",
+    text: prompt
+  });
+  const r = await fetch("https://red-band-36ee.leeancona-connect-116.workers.dev", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4096,
+      messages: [{
+        role: "user",
+        content
+      }]
+    })
+  });
+  if (!r.ok) {
+    const e = await r.json();
+    throw new Error(e.error?.message || "API error");
+  }
+  const d = await r.json();
+  return d.content.map(c => c.text || "").join("");
+}
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function compressImage(file, maxPx = 1024) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.width,
+        h = img.height;
+      if (w > maxPx || h > maxPx) {
+        if (w > h) {
+          h = Math.round(h * maxPx / w);
+          w = maxPx;
+        } else {
+          w = Math.round(w * maxPx / h);
+          h = maxPx;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      res(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+function parseJSON(text) {
+  if (!text) return null;
+  // Try direct parse
+  try {
+    return JSON.parse(text.trim());
+  } catch {}
+  // Strip markdown fences
+  const s = text.replace(/```json\n?|```\n?/g, "").trim();
+  try {
+    return JSON.parse(s);
+  } catch {}
+  // Extract first JSON object
+  const obj = s.match(/\{[\s\S]*\}/);
+  if (obj) {
+    try {
+      return JSON.parse(obj[0]);
+    } catch {}
+  }
+  // Extract first JSON array
+  const arr = s.match(/\[[\s\S]*\]/);
+  if (arr) {
+    try {
+      return JSON.parse(arr[0]);
+    } catch {}
+  }
+  return null;
+}
+function computeAlerts({
+  alloc,
+  spentByCat,
+  categories,
+  periodProgress,
+  income,
+  totalAlloc
+}) {
+  const alerts = [];
+  categories.forEach(cat => {
+    const b = parseFloat(alloc[cat.id]) || 0;
+    const s = spentByCat[cat.id] || 0;
+    if (b <= 0) return;
+    const sp = s / b;
+    const tp = periodProgress;
+    if (s > b) alerts.push({
+      level: "critical",
+      catId: cat.id,
+      icon: "🚨",
+      color: "#E07A5F",
+      title: `${cat.icon} ${cat.label} is over budget`,
+      detail: `${fmtDec(s - b)} over — spent ${fmtDec(s)} of ${fmtDec(b)}.`
+    });else if (sp >= 0.9) alerts.push({
+      level: "warning",
+      catId: cat.id,
+      icon: "⚠️",
+      color: "#E07A5F",
+      title: `${cat.icon} ${cat.label} almost empty`,
+      detail: `Only ${fmtDec(b - s)} left (${Math.round((1 - sp) * 100)}%).`
+    });else if (sp > tp + 0.25 && sp < 0.9) alerts.push({
+      level: "watch",
+      catId: cat.id,
+      icon: "⚡",
+      color: "#D4A017",
+      title: `${cat.icon} ${cat.label} spending fast`,
+      detail: `${Math.round(sp * 100)}% spent, ${Math.round(tp * 100)}% through period. Projected: ${fmtDec(b > 0 ? s / Math.max(tp, .01) : 0)}.`
+    });else if (Math.abs(sp - tp) <= 0.10 && sp > 0.1) alerts.push({
+      level: "good",
+      catId: cat.id,
+      icon: "✅",
+      color: "#74C69D",
+      title: `${cat.icon} ${cat.label} on track`,
+      detail: `${Math.round(sp * 100)}% spent, ${Math.round(tp * 100)}% through period.`
+    });
+  });
+  const unassigned = income - totalAlloc;
+  if (income > 0 && unassigned < 0) alerts.push({
+    level: "critical",
+    icon: "🚨",
+    color: "#E07A5F",
+    title: "Budget over-allocated",
+    detail: `${fmtDec(Math.abs(unassigned))} more allocated than your paycheck.`
+  });else if (income > 0 && unassigned > 0 && unassigned < income * 0.05) alerts.push({
+    level: "good",
+    icon: "🎯",
+    color: "#74C69D",
+    title: "Nearly every dollar assigned",
+    detail: `${fmtDec(unassigned)} left to assign.`
+  });
+  const order = {
+    critical: 0,
+    warning: 1,
+    watch: 2,
+    good: 3
+  };
+  return alerts.sort((a, b) => order[a.level] - order[b.level]);
+}
+function BackupModal({
+  getBundle,
+  applyBundle,
+  onClose
+}) {
+  const [tab, setTab] = useState("export");
+  const [importText, setImportText] = useState("");
+  const [importErr, setImportErr] = useState("");
+  const [exported, setExported] = useState(false);
+  const doExport = () => {
+    const data = getBundle();
+    const json = JSON.stringify({
+      _v: "hb4",
+      _exported: new Date().toISOString(),
+      ...data
+    }, null, 2);
+    const blob = new Blob([json], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `family-budget-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setExported(true);
+  };
+  const doCopy = () => {
+    const data = getBundle();
+    const json = JSON.stringify({
+      _v: "hb4",
+      _exported: new Date().toISOString(),
+      ...data
+    }, null, 2);
+    navigator.clipboard.writeText(json).then(() => setExported(true));
+  };
+  const doImport = () => {
+    setImportErr("");
+    try {
+      const parsed = JSON.parse(importText.trim());
+      if (parsed._v !== "hb4") {
+        setImportErr("Not a valid Family Budget backup file.");
+        return;
+      }
+      const {
+        _v,
+        _exported,
+        ...bundle
+      } = parsed;
+      applyBundle(bundle);
+      onClose();
+    } catch (e) {
+      setImportErr("Invalid JSON — check the file and try again.");
+    }
+  };
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "💾 Backup & Restore",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 5,
+      marginBottom: 13
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setTab("export"),
+    style: {
+      ...S.periodBtn,
+      ...(tab === "export" ? S.periodBtnActive : {}),
+      flex: 1
+    }
+  }, "Export"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setTab("import"),
+    style: {
+      ...S.periodBtn,
+      ...(tab === "import" ? S.periodBtnActive : {}),
+      flex: 1
+    }
+  }, "Import / Restore")), tab === "export" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#74C69D",
+      marginBottom: 11
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#E8E0D0",
+      fontWeight: "bold",
+      marginBottom: 4
+    }
+  }, "Your data is safe"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A",
+      lineHeight: 1.6
+    }
+  }, "Export a full JSON backup of all your budget data — paychecks, transactions, categories, debts, goals, everything. When I update the app, your data stays in localStorage automatically. But a backup means if anything ever goes wrong, you can restore in 10 seconds.")), /*#__PURE__*/React.createElement("button", {
+    onClick: doExport,
+    style: {
+      ...S.btnPrimary,
+      width: "100%",
+      padding: 11,
+      fontSize: 13,
+      marginBottom: 8
+    }
+  }, "⬇️ Download Backup File"), /*#__PURE__*/React.createElement("button", {
+    onClick: doCopy,
+    style: {
+      ...S.btnGhost,
+      width: "100%",
+      padding: 11,
+      fontSize: 13
+    }
+  }, "📋 Copy to Clipboard"), exported && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#74C69D",
+      fontSize: 12,
+      marginTop: 9
+    }
+  }, "✓ Backup ready — save it somewhere safe")), tab === "import" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#D4A017",
+      marginBottom: 11
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#D4A017",
+      fontWeight: "bold",
+      marginBottom: 3
+    }
+  }, "⚠️ This will overwrite current data"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A",
+      lineHeight: 1.5
+    }
+  }, "Paste your backup JSON below. All current data will be replaced with the backup. Make sure you're restoring the right file.")), /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Paste backup JSON"), /*#__PURE__*/React.createElement("textarea", {
+    value: importText,
+    onChange: e => {
+      setImportText(e.target.value);
+      setImportErr("");
+    },
+    placeholder: '{\n  "_v": "hb4",\n  ...\n}',
+    style: {
+      ...S.input,
+      height: 130,
+      resize: "vertical",
+      fontFamily: "monospace",
+      fontSize: 10,
+      marginBottom: 8
+    }
+  }), importErr && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#E07A5F",
+      fontSize: 11,
+      marginBottom: 7
+    }
+  }, "⚠️ ", importErr), /*#__PURE__*/React.createElement("button", {
+    onClick: doImport,
+    disabled: !importText.trim(),
+    style: {
+      ...S.btnPrimary,
+      width: "100%",
+      padding: 11,
+      fontSize: 13,
+      opacity: importText.trim() ? 1 : .4
+    }
+  }, "⬆️ Restore from Backup")));
+}
+const S = {
+  root: {
+    minHeight: "100vh",
+    background: "#0C1520",
+    color: "#E8E0D0",
+    fontFamily: "'Georgia','Times New Roman',serif"
+  },
+  header: {
+    background: "linear-gradient(160deg,#132030 0%,#0C1520 100%)",
+    borderBottom: "1px solid #1E3028",
+    padding: "10px 12px 0",
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
+    boxShadow: "0 4px 24px rgba(0,0,0,.5)"
+  },
+  headerTop: {
+    maxWidth: 720,
+    margin: "0 auto",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8
+  },
+  appTag: {
+    fontSize: 8,
+    letterSpacing: 3,
+    color: "#74C69D",
+    textTransform: "uppercase",
+    marginBottom: 1
+  },
+  appTitle: {
+    fontSize: 17,
+    fontWeight: "bold",
+    color: "#F0EAD6"
+  },
+  periodNav: {
+    display: "flex",
+    alignItems: "center",
+    gap: 5
+  },
+  periodNavLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#74C69D",
+    minWidth: 105,
+    textAlign: "center"
+  },
+  navArrow: {
+    background: "transparent",
+    color: "#74C69D",
+    border: "1px solid #1E3028",
+    borderRadius: 5,
+    padding: "2px 8px",
+    cursor: "pointer",
+    fontSize: 16,
+    lineHeight: 1
+  },
+  syncBtn: {
+    background: "transparent",
+    border: "1px solid #1E3028",
+    borderRadius: 5,
+    padding: "3px 8px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    fontFamily: "Georgia,serif"
+  },
+  tabs: {
+    maxWidth: 720,
+    margin: "0 auto",
+    display: "flex",
+    gap: 1,
+    overflowX: "auto"
+  },
+  tab: {
+    border: "1px solid transparent",
+    borderRadius: "6px 6px 0 0",
+    padding: "4px 10px",
+    cursor: "pointer",
+    fontFamily: "Georgia,serif",
+    background: "transparent",
+    color: "#74C69D",
+    display: "flex",
+    alignItems: "center",
+    whiteSpace: "nowrap",
+    transition: "all .12s"
+  },
+  tabActive: {
+    background: "#1A2E22",
+    color: "#fff",
+    borderColor: "#2D4A35",
+    borderBottomColor: "#1A2E22"
+  },
+  ribbon: {
+    padding: "5px 13px",
+    display: "flex",
+    alignItems: "center",
+    gap: 6
+  },
+  incomeBar: {
+    background: "#141F2A",
+    borderBottom: "1px solid #1E3028",
+    padding: "10px 12px 8px"
+  },
+  incomeBarInner: {
+    maxWidth: 720,
+    margin: "0 auto",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start"
+  },
+  microLabel: {
+    fontSize: 8,
+    letterSpacing: 2,
+    color: "#7A8B7A",
+    textTransform: "uppercase",
+    marginBottom: 2
+  },
+  incomeAmt: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#F0EAD6",
+    margin: "1px 0 3px"
+  },
+  zeroBanner: {
+    maxWidth: 720,
+    margin: "2px auto 0",
+    textAlign: "center",
+    color: "#74C69D",
+    fontSize: 10
+  },
+  body: {
+    maxWidth: 720,
+    margin: "0 auto",
+    padding: "10px 10px 50px"
+  },
+  section: {
+    marginBottom: 12
+  },
+  sectionTitle: {
+    fontSize: 8,
+    letterSpacing: 2,
+    color: "#74C69D",
+    textTransform: "uppercase",
+    marginBottom: 6
+  },
+  groupHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "3px 0",
+    borderBottom: "1px solid",
+    marginBottom: 5
+  },
+  card: {
+    background: "#141F2A",
+    border: "1px solid #1A2A22",
+    borderRadius: 8,
+    padding: "10px 11px",
+    marginBottom: 5
+  },
+  budgetRow: {
+    background: "#141F2A",
+    border: "1px solid #1A2A22",
+    borderRadius: 7,
+    padding: "8px 10px",
+    marginBottom: 4
+  },
+  txRow: {
+    background: "#141F2A",
+    border: "1px solid #1A2A22",
+    borderLeft: "3px solid",
+    borderRadius: 7,
+    padding: "8px 10px",
+    marginBottom: 4,
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between"
+  },
+  summaryRow: {
+    background: "#141F2A",
+    border: "1px solid #1A2A22",
+    borderRadius: 6,
+    padding: "7px 9px",
+    marginBottom: 3
+  },
+  statGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3,1fr)",
+    gap: 5,
+    marginBottom: 10
+  },
+  statCard: {
+    background: "#141F2A",
+    border: "1px solid #1A2A22",
+    borderRadius: 7,
+    padding: "8px 6px",
+    textAlign: "center"
+  },
+  periodBtn: {
+    background: "transparent",
+    color: "#74C69D",
+    border: "1px solid #1E3028",
+    borderRadius: 5,
+    padding: "2px 9px",
+    cursor: "pointer",
+    fontSize: 10,
+    fontFamily: "Georgia,serif"
+  },
+  periodBtnActive: {
+    background: "#2D6A4F",
+    color: "#fff",
+    borderColor: "#40916C"
+  },
+  addTxBtn: {
+    width: "100%",
+    padding: 9,
+    fontSize: 12,
+    background: "#2D6A4F",
+    color: "#fff",
+    border: "1px solid #40916C",
+    borderRadius: 7,
+    cursor: "pointer",
+    fontFamily: "Georgia,serif",
+    marginBottom: 9
+  },
+  addCatBtn: {
+    width: "100%",
+    padding: 7,
+    fontSize: 10,
+    background: "transparent",
+    color: "#74C69D",
+    border: "1px dashed #2D4A35",
+    borderRadius: 7,
+    cursor: "pointer",
+    fontFamily: "Georgia,serif",
+    marginBottom: 10
+  },
+  recurringBtn: {
+    width: "100%",
+    padding: 6,
+    fontSize: 10,
+    background: "transparent",
+    color: "#D4A017",
+    border: "1px solid #6A5010",
+    borderRadius: 5,
+    cursor: "pointer",
+    fontFamily: "Georgia,serif",
+    marginBottom: 9
+  },
+  checkCircle: {
+    width: 17,
+    height: 17,
+    borderRadius: "50%",
+    border: "2px solid",
+    cursor: "pointer",
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  inlineInput: {
+    background: "#0C1520",
+    border: "1px solid #2D4A35",
+    borderRadius: 5,
+    color: "#E8E0D0",
+    padding: "4px 7px",
+    fontSize: 11,
+    fontFamily: "Georgia,serif",
+    boxSizing: "border-box"
+  },
+  checkBtn: {
+    background: "#2D6A4F",
+    color: "#fff",
+    border: "none",
+    borderRadius: 5,
+    padding: "3px 7px",
+    cursor: "pointer",
+    fontSize: 11
+  },
+  xBtn: {
+    background: "transparent",
+    color: "#555",
+    border: "1px solid #1E3028",
+    borderRadius: 5,
+    padding: "3px 6px",
+    cursor: "pointer",
+    fontSize: 11
+  },
+  iconBtn: {
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    fontSize: 11,
+    padding: "1px 2px",
+    opacity: .6
+  },
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,.8)",
+    zIndex: 200,
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center"
+  },
+  modalBox: {
+    background: "#141F2A",
+    borderTop: "1px solid #2D4A35",
+    borderRadius: "14px 14px 0 0",
+    padding: "15px 13px 30px",
+    width: "100%",
+    maxWidth: 640,
+    maxHeight: "90vh",
+    overflowY: "auto",
+    animation: "slideUp .22s ease"
+  },
+  modalHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 11
+  },
+  closeBtn: {
+    background: "transparent",
+    color: "#7A8B7A",
+    border: "none",
+    cursor: "pointer",
+    fontSize: 15
+  },
+  input: {
+    background: "#0C1520",
+    border: "1px solid #2D4A35",
+    borderRadius: 6,
+    color: "#E8E0D0",
+    padding: "7px 9px",
+    fontSize: 11,
+    width: "100%",
+    boxSizing: "border-box",
+    fontFamily: "Georgia,serif"
+  },
+  inputPfx: {
+    position: "absolute",
+    left: 7,
+    top: "50%",
+    transform: "translateY(-50%)",
+    color: "#7A8B7A",
+    fontSize: 12,
+    pointerEvents: "none"
+  },
+  btnPrimary: {
+    background: "#2D6A4F",
+    color: "#fff",
+    border: "1px solid #40916C",
+    borderRadius: 6,
+    padding: "8px",
+    fontSize: 12,
+    cursor: "pointer",
+    fontFamily: "Georgia,serif"
+  },
+  btnGhost: {
+    background: "transparent",
+    color: "#74C69D",
+    border: "1px solid #2D4A35",
+    borderRadius: 6,
+    padding: "8px",
+    fontSize: 12,
+    cursor: "pointer",
+    fontFamily: "Georgia,serif"
+  },
+  btnOutline: {
+    background: "transparent",
+    color: "#74C69D",
+    border: "1px solid #2D4A35",
+    borderRadius: 5,
+    padding: "2px 8px",
+    cursor: "pointer",
+    fontSize: 9,
+    fontFamily: "Georgia,serif",
+    display: "inline-block"
+  }
+};
+if (typeof document !== "undefined") {
+  const st = document.createElement("style");
+  st.textContent = `
+    @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+    input[type=date]::-webkit-calendar-picker-indicator,input[type=month]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.3)}
+    select option,optgroup{background:#141F2A}
+    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0C1520}::-webkit-scrollbar-thumb{background:#2D4A35;border-radius:3px}
+  `;
+  document.head.appendChild(st);
+}
+function App() {
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth() + 1);
+  const [period, setPeriod] = useState(today.getDate() <= 15 ? 1 : 2);
+  const [householdId, setHouseholdId] = useStorage("hb4_household", "");
+  const [deviceName, setDeviceName] = useStorage("hb4_device", "");
+  const [syncEnabled, setSyncEnabled] = useStorage("hb4_syncEnabled", false);
+  const [syncStatus, setSyncStatus] = useState("idle");
+  const [lastSync, setLastSync] = useState(null);
+  const [paychecks, setPaychecks] = useStorage("hb4_paychecks", {});
+  const [allocations, setAllocations] = useStorage("hb4_allocations", {});
+  const [transactions, setTransactions] = useStorage("hb4_transactions", []);
+  const [categories, setCategories] = useStorage("hb4_categories", DEFAULT_CATEGORIES);
+  const [billChecks, setBillChecks] = useStorage("hb4_billchecks", {});
+  const [sinkingFunds, setSinkingFunds] = useStorage("hb4_sinking", DEFAULT_SINKING);
+  const [savingsGoals, setSavingsGoals] = useStorage("hb4_savingsgoals", []);
+  const [netWorth, setNetWorth] = useStorage("hb4_networth", []);
+  const [periodNotes, setPeriodNotes] = useStorage("hb4_periodnotes", {});
+  const [recurringBills, setRecurring] = useStorage("hb4_recurring", []);
+  const [debts, setDebts] = useStorage("hb4_debts", []);
+  const [annualExpenses, setAnnualExpenses] = useStorage("hb4_annual", ANNUAL_EXPENSES_DEFAULT);
+  const [lineNotes, setLineNotes] = useStorage("hb4_linenotes", {});
+  const [givingLog, setGivingLog] = useStorage("hb4_giving", {
+    goal: 0,
+    entries: []
+  });
+  const [windfalls, setWindfalls] = useStorage("hb4_windfalls", []);
+  const [pendingTxs, setPendingTxs] = useStorage("hb4_pending", []);
+  const [apiKey, setApiKeyState] = useState(() => (localStorage.getItem("hb4_apikey") || "").trim());
+  const saveApiKey = k => {
+    const t = k.trim();
+    localStorage.setItem("hb4_apikey", t);
+    setApiKeyState(t);
+  };
+  const [view, setView] = useState("budget");
+  const [toast, setToast] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [alertsExpanded, setAlertsExpanded] = useState(false);
+  const pendingPush = useRef(false);
+  const pk = pKey(year, month, period);
+  const income = paychecks[pk] || 0;
+  const alloc = allocations[pk] || {};
+  const periodTxs = transactions.filter(t => t.pk === pk);
+  const totalAlloc = Object.values(alloc).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+  const unassigned = income - totalAlloc;
+  const totalSpent = periodTxs.reduce((a, t) => a + t.amount, 0);
+  const spentByCat = {};
+  periodTxs.forEach(t => {
+    spentByCat[t.catId] = (spentByCat[t.catId] || 0) + t.amount;
+  });
+  const periodLabel = period === 1 ? `${MONTHS[month - 1]} 1–15` : `${MONTHS[month - 1]} 16–${new Date(year, month, 0).getDate()}`;
+  const mk1 = pKey(year, month, 1),
+    mk2 = pKey(year, month, 2);
+  const monthIncome = (paychecks[mk1] || 0) + (paychecks[mk2] || 0);
+  const monthTxs = transactions.filter(t => t.pk === mk1 || t.pk === mk2);
+  const monthAlloc = Object.values({
+    ...(allocations[mk1] || {}),
+    ...(allocations[mk2] || {})
+  }).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+  const margin = monthIncome > 0 ? (monthIncome - monthAlloc) / monthIncome : 0;
+  const riskScore = margin < 0 ? 100 : margin < 0.05 ? 85 : margin < 0.1 ? 65 : margin < 0.2 ? 40 : margin < 0.3 ? 20 : 10;
+  const daysInPeriod = period === 1 ? 15 : new Date(year, month, 0).getDate() - 15;
+  const dayOfMonth = today.getMonth() + 1 === month && today.getFullYear() === year ? today.getDate() : period === 1 ? 15 : new Date(year, month, 0).getDate();
+  const daysElapsed = period === 1 ? Math.min(dayOfMonth, 15) : Math.max(0, Math.min(dayOfMonth - 15, daysInPeriod));
+  const periodProgress = daysInPeriod > 0 ? daysElapsed / daysInPeriod : 1;
+  const prevPk = period === 2 ? mk1 : pKey(year, month === 1 ? 12 : month - 1, 2);
+  const prevAlloc = allocations[prevPk] || {};
+  const prevSpent = {};
+  transactions.filter(t => t.pk === prevPk).forEach(t => {
+    prevSpent[t.catId] = (prevSpent[t.catId] || 0) + t.amount;
+  });
+  const rolloverByCat = {};
+  Object.entries(prevAlloc).forEach(([cid, b]) => {
+    const s = (parseFloat(b) || 0) - (prevSpent[cid] || 0);
+    if (s > 0) rolloverByCat[cid] = s;
+  });
+  const alerts = computeAlerts({
+    alloc,
+    spentByCat,
+    categories,
+    periodProgress,
+    income,
+    totalAlloc
+  });
+  const criticalAlerts = alerts.filter(a => a.level === "critical" || a.level === "warning");
+  const getBundle = useCallback(() => ({
+    paychecks,
+    allocations,
+    transactions,
+    categories,
+    billChecks,
+    sinkingFunds,
+    savingsGoals,
+    netWorth,
+    periodNotes,
+    recurringBills,
+    debts,
+    annualExpenses,
+    lineNotes,
+    givingLog,
+    windfalls
+  }), [paychecks, allocations, transactions, categories, billChecks, sinkingFunds, savingsGoals, netWorth, periodNotes, recurringBills, debts, annualExpenses, lineNotes, givingLog, windfalls]);
+  const applyBundle = useCallback(b => {
+    if (!b) return;
+    if (b.paychecks) setPaychecks(b.paychecks);
+    if (b.allocations) setAllocations(b.allocations);
+    if (b.categories) setCategories(b.categories);
+    if (b.billChecks) setBillChecks(b.billChecks);
+    if (b.sinkingFunds) setSinkingFunds(b.sinkingFunds);
+    if (b.savingsGoals) setSavingsGoals(b.savingsGoals);
+    if (b.netWorth) setNetWorth(b.netWorth);
+    if (b.periodNotes) setPeriodNotes(b.periodNotes);
+    if (b.recurringBills) setRecurring(b.recurringBills);
+    if (b.debts) setDebts(b.debts);
+    if (b.annualExpenses) setAnnualExpenses(b.annualExpenses);
+    if (b.lineNotes) setLineNotes(b.lineNotes);
+    if (b.givingLog) setGivingLog(b.givingLog);
+    if (b.windfalls) setWindfalls(b.windfalls);
+    if (b.transactions) {
+      setTransactions(prev => {
+        const merged = [...b.transactions];
+        prev.forEach(t => {
+          if (!merged.find(r => r.id === t.id)) merged.push(t);
+        });
+        return merged.sort((a, b2) => b2.id - a.id);
+      });
+    }
+  }, []);
+  const pushSync = useCallback(async () => {
+    if (!householdId || !syncEnabled) return;
+    setSyncStatus("syncing");
+    const ok = await cloudSet(householdId, getBundle());
+    setSyncStatus(ok ? "ok" : "err");
+    if (ok) setLastSync(Date.now());
+  }, [householdId, syncEnabled, getBundle]);
+  const pullSync = useCallback(async () => {
+    if (!householdId || !syncEnabled) return;
+    const remote = await cloudGet(householdId);
+    if (!remote) return;
+    applyBundle(remote);
+    setLastSync(Date.now());
+    setSyncStatus("ok");
+  }, [householdId, syncEnabled, applyBundle]);
+  useEffect(() => {
+    if (!householdId || !syncEnabled) return;
+    const id = setInterval(pullSync, 6000);
+    return () => clearInterval(id);
+  }, [householdId, syncEnabled, pullSync]);
+  useEffect(() => {
+    if (!householdId || !syncEnabled) return;
+    if (pendingPush.current) return;
+    pendingPush.current = true;
+    const t = setTimeout(() => {
+      pushSync();
+      pendingPush.current = false;
+    }, 1500);
+    return () => {
+      clearTimeout(t);
+      pendingPush.current = false;
+    };
+  }, [paychecks, allocations, transactions, categories, billChecks, sinkingFunds, savingsGoals, netWorth, periodNotes, recurringBills, debts, annualExpenses, lineNotes, givingLog, windfalls]);
+  const notify = (msg, type = "ok") => {
+    setToast({
+      msg,
+      type
+    });
+    setTimeout(() => setToast(null), 2800);
+  };
+  const saveIncome = v => {
+    const n = parseFloat(v);
+    if (isNaN(n) || n <= 0) {
+      notify("Enter valid amount", "err");
+      return false;
+    }
+    setPaychecks(p => ({
+      ...p,
+      [pk]: n
+    }));
+    return true;
+  };
+  const setAlloc = (catId, v) => setAllocations(p => ({
+    ...p,
+    [pk]: {
+      ...(p[pk] || {}),
+      [catId]: parseFloat(v) || 0
+    }
+  }));
+  const addTx = tx => setTransactions(p => [{
+    ...tx,
+    id: Date.now(),
+    pk
+  }, ...p]);
+  const deleteTx = id => setTransactions(p => p.filter(t => t.id !== id));
+  const updateTx = (id, ch) => setTransactions(p => p.map(t => t.id === id ? {
+    ...t,
+    ...ch
+  } : t));
+  const toggleBillPaid = billId => setBillChecks(p => ({
+    ...p,
+    [pk]: {
+      ...(p[pk] || {}),
+      [billId]: !(p[pk] || {})[billId]
+    }
+  }));
+  const copyLastPeriod = () => {
+    const la = allocations[prevPk];
+    if (!la || Object.keys(la).length === 0) {
+      notify("No previous period found", "err");
+      return;
+    }
+    setAllocations(p => ({
+      ...p,
+      [pk]: {
+        ...la,
+        ...(p[pk] || {})
+      }
+    }));
+    notify("Last period copied ✓");
+  };
+  useEffect(() => {
+    if (!income || !recurringBills.length) return;
+    recurringBills.filter(r => r.period === period || r.period === 0).forEach(r => {
+      setAllocations(p => {
+        if ((p[pk] || {})[r.catId] !== undefined) return p;
+        return {
+          ...p,
+          [pk]: {
+            ...(p[pk] || {}),
+            [r.catId]: r.amount
+          }
+        };
+      });
+    });
+  }, [pk, income]);
+  const shiftPeriod = dir => {
+    let np = period + dir,
+      ny = year,
+      nm = month;
+    if (np < 1) {
+      np = 2;
+      nm--;
+      if (nm < 1) {
+        nm = 12;
+        ny--;
+      }
+    }
+    if (np > 2) {
+      np = 1;
+      nm++;
+      if (nm > 12) {
+        nm = 1;
+        ny++;
+      }
+    }
+    setYear(ny);
+    setMonth(nm);
+    setPeriod(np);
+  };
+  const syncDot = syncEnabled ? syncStatus === "ok" ? "#74C69D" : syncStatus === "syncing" ? "#D4A017" : syncStatus === "err" ? "#E07A5F" : "#555" : "#555";
+  const pendingCount = pendingTxs.filter(t => t.status === "pending").length;
+  const TABS = [["budget", "📋", "Budget"], ["spending", "💳", "Spending"], ["inbox", "📥", "Inbox"], ["summary", "📊", "Month"], ["goals", "🎯", "Goals"], ["debt", "📉", "Debt"], ["networth", "📈", "Wealth"], ["plan", "🔮", "Planner"]];
+  return /*#__PURE__*/React.createElement("div", {
+    style: S.root
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.header
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.headerTop
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.appTag
+  }, "Every Dollar Has A Home"), /*#__PURE__*/React.createElement("div", {
+    style: S.appTitle
+  }, "Family Budget")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 7
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setModal("backup"),
+    style: {
+      ...S.syncBtn,
+      marginRight: 3
+    },
+    title: "Backup / Restore"
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A"
+    }
+  }, "💾")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setModal("settings"),
+    style: {
+      ...S.syncBtn,
+      marginRight: 3
+    },
+    title: "Settings"
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 7,
+      height: 7,
+      borderRadius: "50%",
+      background: apiKey ? "#74C69D" : "#E07A5F",
+      display: "inline-block",
+      marginRight: 4,
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A"
+    }
+  }, "⚙️")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setModal("sync"),
+    style: S.syncBtn
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 7,
+      height: 7,
+      borderRadius: "50%",
+      background: syncDot,
+      display: "inline-block",
+      marginRight: 5,
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: syncEnabled ? "#74C69D" : "#555"
+    }
+  }, syncEnabled ? `🏠 ${householdId}` : "Sync")), /*#__PURE__*/React.createElement("div", {
+    style: S.periodNav
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => shiftPeriod(-1),
+    style: S.navArrow
+  }, "‹"), /*#__PURE__*/React.createElement("span", {
+    style: S.periodNavLabel
+  }, periodLabel), /*#__PURE__*/React.createElement("button", {
+    onClick: () => shiftPeriod(1),
+    style: S.navArrow
+  }, "›")))), /*#__PURE__*/React.createElement("div", {
+    style: S.tabs
+  }, TABS.map(([v, ic, l]) => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    onClick: () => setView(v),
+    style: {
+      ...S.tab,
+      ...(view === v ? S.tabActive : {})
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13
+    }
+  }, ic), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      marginLeft: 3
+    }
+  }, l), v === "budget" && criticalAlerts.length > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: "#E07A5F",
+      color: "#fff",
+      borderRadius: "50%",
+      fontSize: 9,
+      width: 14,
+      height: 14,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: 4
+    }
+  }, criticalAlerts.length), v === "inbox" && pendingCount > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: "#D4A017",
+      color: "#000",
+      borderRadius: "50%",
+      fontSize: 9,
+      width: 14,
+      height: 14,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: 4
+    }
+  }, pendingCount))))), toast && /*#__PURE__*/React.createElement(Toast, {
+    msg: toast.msg,
+    type: toast.type
+  }), riskScore >= 65 && income > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.ribbon,
+      background: riskScore >= 85 ? "#3D1F18" : "#332A0A"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: riskScore >= 85 ? "#E07A5F" : "#D4A017",
+      fontWeight: "bold",
+      fontSize: 11
+    }
+  }, riskScore >= 85 ? "🚨 Budget Risk High" : "⚡ Thin Margin"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#7A8B7A",
+      fontSize: 11,
+      marginLeft: 6
+    }
+  }, riskScore >= 85 ? "Under 5% margin — one surprise breaks the budget" : "Budget margin is tight this month")), /*#__PURE__*/React.createElement(IncomeBanner, {
+    income: income,
+    totalAlloc: totalAlloc,
+    unassigned: unassigned,
+    totalSpent: totalSpent,
+    periodLabel: periodLabel,
+    periodProgress: periodProgress,
+    onEdit: () => setModal("income"),
+    onCopyLast: copyLastPeriod,
+    alerts: alerts,
+    alertsExpanded: alertsExpanded,
+    setAlertsExpanded: setAlertsExpanded
+  }), /*#__PURE__*/React.createElement("div", {
+    style: S.body
+  }, view === "budget" && /*#__PURE__*/React.createElement(BudgetView, {
+    pk: pk,
+    income: income,
+    alloc: alloc,
+    spentByCat: spentByCat,
+    rolloverByCat: rolloverByCat,
+    categories: categories,
+    periodProgress: periodProgress,
+    billChecks: billChecks[pk] || {},
+    onToggleBill: toggleBillPaid,
+    onSetAlloc: setAlloc,
+    onAddCat: () => setModal("addcat"),
+    onDeleteCat: id => {
+      setCategories(p => p.filter(c => c.id !== id));
+      notify("Removed");
+    },
+    onEditCat: (id, label, icon) => {
+      setCategories(p => p.map(c => c.id === id ? {
+        ...c,
+        label,
+        icon
+      } : c));
+      notify("Updated ✓");
+    },
+    onAddRecurring: () => setModal("addrecurring"),
+    periodNotes: periodNotes[pk] || "",
+    onNotesChange: v => setPeriodNotes(p => ({
+      ...p,
+      [pk]: v
+    })),
+    lineNotes: lineNotes[pk] || {},
+    onLineNote: (cid, v) => setLineNotes(p => ({
+      ...p,
+      [pk]: {
+        ...(p[pk] || {}),
+        [cid]: v
+      }
+    })),
+    alerts: alerts,
+    notify: notify
+  }), view === "spending" && /*#__PURE__*/React.createElement(SpendingView, {
+    periodTxs: periodTxs,
+    categories: categories,
+    period: period,
+    setPeriod: setPeriod,
+    onAdd: () => setModal("addtx"),
+    onDelete: id => {
+      deleteTx(id);
+      notify("Deleted");
+    },
+    onUpdate: updateTx
+  }), view === "summary" && /*#__PURE__*/React.createElement(SummaryView, {
+    year: year,
+    month: month,
+    monthIncome: monthIncome,
+    paychecks: paychecks,
+    allocations: allocations,
+    monthTxs: monthTxs,
+    categories: categories,
+    transactions: transactions
+  }), view === "goals" && /*#__PURE__*/React.createElement(GoalsView, {
+    sinkingFunds: sinkingFunds,
+    setSinkingFunds: setSinkingFunds,
+    savingsGoals: savingsGoals,
+    setSavingsGoals: setSavingsGoals,
+    annualExpenses: annualExpenses,
+    setAnnualExpenses: setAnnualExpenses,
+    givingLog: givingLog,
+    setGivingLog: setGivingLog,
+    currentMonth: month,
+    notify: notify
+  }), view === "debt" && /*#__PURE__*/React.createElement(DebtView, {
+    debts: debts,
+    setDebts: setDebts,
+    notify: notify
+  }), view === "networth" && /*#__PURE__*/React.createElement(WealthView, {
+    netWorth: netWorth,
+    setNetWorth: setNetWorth,
+    windfalls: windfalls,
+    setWindfalls: setWindfalls,
+    debts: debts,
+    savingsGoals: savingsGoals,
+    monthIncome: monthIncome,
+    notify: notify
+  }), view === "plan" && /*#__PURE__*/React.createElement(PlannerView, {
+    income: income,
+    alloc: alloc,
+    categories: categories,
+    spentByCat: spentByCat,
+    debts: debts,
+    sinkingFunds: sinkingFunds,
+    savingsGoals: savingsGoals,
+    monthIncome: monthIncome,
+    riskScore: riskScore,
+    periodProgress: periodProgress,
+    transactions: transactions
+  }), view === "inbox" && /*#__PURE__*/React.createElement(InboxView, {
+    pendingTxs: pendingTxs,
+    setPendingTxs: setPendingTxs,
+    categories: categories,
+    addTx: addTx,
+    apiKey: apiKey,
+    notify: notify,
+    onNeedKey: () => setModal("settings")
+  })), modal === "backup" && /*#__PURE__*/React.createElement(BackupModal, {
+    getBundle: getBundle,
+    applyBundle: b => {
+      applyBundle(b);
+      notify("Data restored ✓");
+    },
+    onClose: () => setModal(null)
+  }), modal === "settings" && /*#__PURE__*/React.createElement(SettingsModal, {
+    apiKey: apiKey,
+    onSave: saveApiKey,
+    onClose: () => setModal(null)
+  }), modal === "income" && /*#__PURE__*/React.createElement(IncomeModal, {
+    income: income,
+    periodLabel: periodLabel,
+    onSave: v => {
+      if (saveIncome(v)) {
+        setModal(null);
+        notify("Paycheck saved ✓");
+      }
+    },
+    onClose: () => setModal(null)
+  }), modal === "addtx" && /*#__PURE__*/React.createElement(AddTxModal, {
+    categories: categories,
+    periodLabel: periodLabel,
+    onAdd: tx => {
+      addTx(tx);
+      setModal(null);
+      notify("Transaction added ✓");
+    },
+    onClose: () => setModal(null)
+  }), modal === "addcat" && /*#__PURE__*/React.createElement(AddCatModal, {
+    onAdd: (l, i, g) => {
+      setCategories(p => [...p, {
+        id: l.toLowerCase().replace(/\s+/g, "_") + "_" + Date.now(),
+        label: l,
+        icon: i,
+        group: g
+      }]);
+      setModal(null);
+      notify("Category added ✓");
+    },
+    onClose: () => setModal(null)
+  }), modal === "addrecurring" && /*#__PURE__*/React.createElement(AddRecurringModal, {
+    categories: categories,
+    recurringBills: recurringBills,
+    onSave: list => {
+      setRecurring(list);
+      setModal(null);
+      notify("Recurring bills saved ✓");
+    },
+    onClose: () => setModal(null)
+  }), modal === "sync" && /*#__PURE__*/React.createElement(SyncModal, {
+    householdId: householdId,
+    deviceName: deviceName,
+    syncEnabled: syncEnabled,
+    lastSync: lastSync,
+    syncStatus: syncStatus,
+    onSetup: (hid, dn) => {
+      setHouseholdId(hid);
+      setDeviceName(dn);
+      setSyncEnabled(true);
+      setModal(null);
+      notify("Sync enabled ✓");
+      setTimeout(() => pushSync(), 600);
+    },
+    onJoin: async (hid, dn) => {
+      const r = await cloudGet(hid);
+      if (!r) {
+        notify("Code not found", "err");
+        return;
+      }
+      setHouseholdId(hid);
+      setDeviceName(dn);
+      setSyncEnabled(true);
+      applyBundle(r);
+      setModal(null);
+      notify("Joined household ✓");
+    },
+    onDisable: () => {
+      setSyncEnabled(false);
+      setModal(null);
+      notify("Sync disabled");
+    },
+    onClose: () => setModal(null)
+  }));
+}
+function IncomeBanner({
+  income,
+  totalAlloc,
+  unassigned,
+  totalSpent,
+  periodLabel,
+  periodProgress,
+  onEdit,
+  onCopyLast,
+  alerts,
+  alertsExpanded,
+  setAlertsExpanded
+}) {
+  const pct = income > 0 ? Math.min(100, totalAlloc / income * 100) : 0;
+  const barColor = unassigned < 0 ? "#E07A5F" : unassigned === 0 ? "#74C69D" : "#D4A017";
+  const critCount = alerts.filter(a => a.level === "critical" || a.level === "warning").length;
+  const watchCount = alerts.filter(a => a.level === "watch").length;
+  return /*#__PURE__*/React.createElement("div", {
+    style: S.incomeBar
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.incomeBarInner
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Paycheck · ", periodLabel), /*#__PURE__*/React.createElement("div", {
+    style: S.incomeAmt
+  }, income ? fmtDec(income) : /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#444"
+    }
+  }, "Not set"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "flex-end",
+      gap: 4
+    }
+  }, income > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Unassigned"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.incomeAmt,
+      color: barColor,
+      fontSize: 18
+    }
+  }, fmtDec(unassigned))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 5
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onCopyLast,
+    style: {
+      ...S.btnOutline,
+      fontSize: 9
+    }
+  }, "⎘ Copy Last"), /*#__PURE__*/React.createElement("button", {
+    onClick: onEdit,
+    style: S.btnOutline
+  }, income ? "✏️ Edit" : "＋ Paycheck")))), income > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 4,
+      background: "#0C1520",
+      borderRadius: 4,
+      overflow: "hidden",
+      margin: "7px 0 2px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: "100%",
+      width: `${pct}%`,
+      background: barColor,
+      borderRadius: 4,
+      transition: "width .4s"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 9,
+      color: "#555",
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", null, fmt(totalAlloc), " budgeted · ", fmt(totalSpent), " spent"), /*#__PURE__*/React.createElement("span", null, Math.round(periodProgress * 100), "% through period")), unassigned === 0 && /*#__PURE__*/React.createElement("div", {
+    style: S.zeroBanner
+  }, "🎉 Every dollar has a home!")), (critCount > 0 || watchCount > 0) && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAlertsExpanded(p => !p),
+    style: {
+      width: "100%",
+      background: "transparent",
+      border: "none",
+      cursor: "pointer",
+      padding: 0,
+      marginTop: 5
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 5,
+      padding: "5px 9px",
+      background: critCount > 0 ? "#2A1510" : "#1E1A08",
+      borderRadius: 6
+    }
+  }, critCount > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: "#E07A5F",
+      color: "#fff",
+      fontSize: 8,
+      padding: "2px 6px",
+      borderRadius: 9,
+      fontWeight: "bold"
+    }
+  }, critCount, " ALERT", critCount > 1 ? "S" : ""), watchCount > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: "#D4A017",
+      color: "#000",
+      fontSize: 8,
+      padding: "2px 6px",
+      borderRadius: 9,
+      fontWeight: "bold"
+    }
+  }, watchCount, " WATCH"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A",
+      flex: 1,
+      textAlign: "left",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, alerts[0]?.title), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#555",
+      fontSize: 11
+    }
+  }, alertsExpanded ? "▲" : "▼"))), alertsExpanded && alerts.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 5,
+      display: "grid",
+      gap: 4
+    }
+  }, alerts.filter(a => a.level !== "good").map((al, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "flex-start",
+      padding: "7px 9px",
+      background: "#0C1520",
+      borderRadius: 6,
+      borderLeft: `3px solid ${al.color}`
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 15,
+      flexShrink: 0
+    }
+  }, al.icon), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: "bold",
+      color: al.color
+    }
+  }, al.title), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A",
+      marginTop: 1
+    }
+  }, al.detail)))), alerts.filter(a => a.level === "good").length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#74C69D",
+      padding: "3px 9px"
+    }
+  }, "✅ ", alerts.filter(a => a.level === "good").length, " categories on track")));
+}
+function BudgetView({
+  pk,
+  income,
+  alloc,
+  spentByCat,
+  rolloverByCat,
+  categories,
+  periodProgress,
+  billChecks,
+  onToggleBill,
+  onSetAlloc,
+  onAddCat,
+  onDeleteCat,
+  onEditCat,
+  onAddRecurring,
+  periodNotes,
+  onNotesChange,
+  lineNotes,
+  onLineNote,
+  alerts,
+  notify
+}) {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    onClick: onAddRecurring,
+    style: S.recurringBtn
+  }, "🔁 Manage Recurring Bills"), GROUPS.map(group => {
+    const cats = categories.filter(c => c.group === group);
+    const gc = GC[group];
+    const groupTotal = cats.reduce((a, c) => a + (parseFloat(alloc[c.id]) || 0), 0);
+    return /*#__PURE__*/React.createElement("div", {
+      key: group,
+      style: {
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...S.groupHeader,
+        borderColor: gc.accent
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: gc.accent,
+        fontWeight: "bold",
+        fontSize: 10,
+        letterSpacing: 2,
+        textTransform: "uppercase"
+      }
+    }, group), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: gc.accent,
+        fontSize: 10
+      }
+    }, fmt(groupTotal))), cats.map(cat => /*#__PURE__*/React.createElement(BudgetRow, {
+      key: cat.id,
+      cat: cat,
+      gc: gc,
+      budgeted: parseFloat(alloc[cat.id]) || 0,
+      spent: spentByCat[cat.id] || 0,
+      rollover: rolloverByCat[cat.id] || 0,
+      periodProgress: periodProgress,
+      isBill: cat.group === "Bills",
+      paid: !!billChecks[cat.id],
+      onTogglePaid: () => onToggleBill(cat.id),
+      onSave: v => {
+        onSetAlloc(cat.id, v);
+        notify("Saved ✓");
+      },
+      onDelete: () => onDeleteCat(cat.id),
+      onEditCat: (label, icon) => onEditCat(cat.id, label, icon),
+      lineNote: lineNotes[cat.id] || "",
+      onLineNote: v => onLineNote(cat.id, v),
+      alert: alerts.find(a => a.catId === cat.id)
+    })));
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: onAddCat,
+    style: S.addCatBtn
+  }, "＋ Add Category"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 5
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "📝 Period Notes (shared)"), /*#__PURE__*/React.createElement("textarea", {
+    value: periodNotes,
+    onChange: e => onNotesChange(e.target.value),
+    placeholder: "Reminders for this pay period...",
+    style: {
+      ...S.input,
+      height: 60,
+      resize: "vertical",
+      marginTop: 3
+    }
+  })));
+}
+function BudgetRow({
+  cat,
+  gc,
+  budgeted,
+  spent,
+  rollover,
+  periodProgress,
+  isBill,
+  paid,
+  onTogglePaid,
+  onSave,
+  onDelete,
+  onEditCat,
+  lineNote,
+  onLineNote,
+  alert
+}) {
+  const [editMode, setEditMode] = useState(null); // null | "amount" | "name"
+  const [val, setVal] = useState("");
+  const [nameVal, setNameVal] = useState(cat.label);
+  const [iconVal, setIconVal] = useState(cat.icon);
+  const [showNote, setShowNote] = useState(false);
+  const [noteVal, setNoteVal] = useState(lineNote);
+  const amtRef = useRef();
+  const nameRef = useRef();
+  const saveAmount = () => {
+    onSave(parseFloat(val) || 0);
+    setEditMode(null);
+  };
+  const saveName = () => {
+    if (nameVal.trim()) onEditCat(nameVal.trim(), iconVal);
+    setEditMode(null);
+  };
+  const QUICK_ICONS = ["🏠", "💡", "🚿", "📡", "📱", "🛡️", "🚗", "📉", "🔁", "🛒", "⛽", "🍽️", "👶", "❤️", "👕", "🧴", "🏦", "🆘", "🎯", "🤝", "🎉", "📦", "📌", "🏋️", "✈️", "🐾", "🎮", "📚", "🍕", "💊", "🎓", "🔧", "💻", "🎁", "🍷", "☕"];
+  const effective = budgeted + rollover;
+  const remaining = effective - spent;
+  const pct = effective > 0 ? Math.min(100, spent / effective * 100) : 0;
+  const over = spent > effective && effective > 0;
+  const barColor = over ? "#E07A5F" : alert && alert.level === "watch" ? "#D4A017" : gc.accent;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.budgetRow,
+      opacity: paid ? .5 : 1,
+      borderColor: alert && alert.level !== "good" ? alert.color : "#1A2A22"
+    }
+  }, editMode === "name" ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 3,
+      marginBottom: 7
+    }
+  }, QUICK_ICONS.map(i => /*#__PURE__*/React.createElement("button", {
+    key: i,
+    onClick: () => setIconVal(i),
+    style: {
+      fontSize: 14,
+      padding: "2px 3px",
+      border: `2px solid ${i === iconVal ? "#74C69D" : "#1E3028"}`,
+      borderRadius: 4,
+      background: "#0C1520",
+      cursor: "pointer"
+    }
+  }, i))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 5
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    ref: nameRef,
+    value: nameVal,
+    onChange: e => setNameVal(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") saveName();
+      if (e.key === "Escape") setEditMode(null);
+    },
+    style: {
+      ...S.inlineInput,
+      flex: 1
+    },
+    autoFocus: true
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: saveName,
+    style: S.checkBtn
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditMode(null),
+    style: S.xBtn
+  }, "✕"))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 7
+    }
+  }, isBill && /*#__PURE__*/React.createElement("button", {
+    onClick: onTogglePaid,
+    style: {
+      ...S.checkCircle,
+      background: paid ? "#2D6A4F" : "transparent",
+      borderColor: paid ? "#40916C" : gc.muted
+    }
+  }, paid && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      color: "#fff"
+    }
+  }, "✓")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 17
+    }
+  }, cat.icon), alert && alert.level !== "good" && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      flexShrink: 0
+    }
+  }, alert.icon), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: "bold",
+      fontSize: 12,
+      color: paid ? "#555" : "#E8E0D0",
+      textDecoration: paid ? "line-through" : "none",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, cat.label), budgeted > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#7A8B7A",
+      marginTop: 1
+    }
+  }, fmtDec(spent), " spent", rollover > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#D4A017"
+    }
+  }, " +", fmt(rollover), " rollover"), " · ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: over ? "#E07A5F" : "#74C69D"
+    }
+  }, over ? `${fmtDec(Math.abs(remaining))} over` : `${fmtDec(remaining)} left`)), lineNote && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#5A7A6A",
+      fontStyle: "italic",
+      marginTop: 1,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, "💬 ", lineNote)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 3,
+      flexShrink: 0
+    }
+  }, editMode === "amount" ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#7A8B7A",
+      fontSize: 12
+    }
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    ref: amtRef,
+    type: "number",
+    value: val,
+    onChange: e => setVal(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") saveAmount();
+      if (e.key === "Escape") setEditMode(null);
+    },
+    style: {
+      ...S.inlineInput,
+      width: 78
+    },
+    autoFocus: true
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: saveAmount,
+    style: S.checkBtn
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditMode(null),
+    style: S.xBtn
+  }, "✕")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: "bold",
+      fontSize: 12,
+      color: budgeted > 0 ? "#E8E0D0" : "#444"
+    }
+  }, budgeted > 0 ? fmtDec(budgeted) : /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#333"
+    }
+  }, "—")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowNote(p => !p),
+    style: {
+      ...S.iconBtn,
+      color: lineNote ? "#74C69D" : "#555"
+    },
+    title: "Note"
+  }, "💬"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setNameVal(cat.label);
+      setIconVal(cat.icon);
+      setEditMode("name");
+    },
+    style: S.iconBtn,
+    title: "Rename"
+  }, "🏷️"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setVal(budgeted || "");
+      setEditMode("amount");
+    },
+    style: S.iconBtn,
+    title: "Edit amount"
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: onDelete,
+    style: S.iconBtn,
+    title: "Delete"
+  }, "🗑")))), budgeted > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 3,
+      background: "#0C1520",
+      borderRadius: 3,
+      overflow: "hidden",
+      marginTop: 5
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: `${pct}%`,
+      background: barColor,
+      height: "100%",
+      borderRadius: 3,
+      transition: "width .4s"
+    }
+  })), showNote && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 7,
+      display: "flex",
+      gap: 5
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: noteVal,
+    onChange: e => setNoteVal(e.target.value),
+    placeholder: "Note for this category...",
+    style: {
+      ...S.inlineInput,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      onLineNote(noteVal);
+      setShowNote(false);
+    },
+    style: S.checkBtn
+  }, "Save")));
+}
+function SpendingView({
+  periodTxs,
+  categories,
+  period,
+  setPeriod,
+  onAdd,
+  onDelete,
+  onUpdate
+}) {
+  const [editId, setEditId] = useState(null);
+  const total = periodTxs.reduce((a, t) => a + t.amount, 0);
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    onClick: onAdd,
+    style: S.addTxBtn
+  }, "＋ Log Transaction"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 9
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setPeriod(1),
+    style: {
+      ...S.periodBtn,
+      ...(period === 1 ? S.periodBtnActive : {})
+    }
+  }, "1–15"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setPeriod(2),
+    style: {
+      ...S.periodBtn,
+      ...(period === 2 ? S.periodBtnActive : {})
+    }
+  }, "16–End")), periodTxs.length > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A"
+    }
+  }, periodTxs.length, " · ", fmtDec(total))), periodTxs.length === 0 ? /*#__PURE__*/React.createElement(EmptyState, {
+    icon: "💳",
+    msg: "No transactions yet."
+  }) : periodTxs.map(tx => {
+    const cat = categories.find(c => c.id === tx.catId) || {
+      label: "Other",
+      icon: "📦",
+      group: "Goals"
+    };
+    const gc = GC[cat.group] || GC.Goals;
+    return editId === tx.id ? /*#__PURE__*/React.createElement(EditTxRow, {
+      key: tx.id,
+      tx: tx,
+      categories: categories,
+      onSave: ch => {
+        onUpdate(tx.id, ch);
+        setEditId(null);
+      },
+      onCancel: () => setEditId(null)
+    }) : /*#__PURE__*/React.createElement(TxRow, {
+      key: tx.id,
+      tx: tx,
+      cat: cat,
+      gc: gc,
+      onDelete: () => onDelete(tx.id),
+      onEdit: () => setEditId(tx.id)
+    });
+  }));
+}
+function TxRow({
+  tx,
+  cat,
+  gc,
+  onDelete,
+  onEdit
+}) {
+  const pl = tx.person === "me" ? "🙋 Me" : tx.person === "spouse" ? "💑 Spouse" : "👥 Joint";
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.txRow,
+      borderLeftColor: gc.accent
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 7,
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 17,
+      marginTop: 1,
+      flexShrink: 0
+    }
+  }, cat.icon), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: "bold",
+      fontSize: 12,
+      color: "#E8E0D0",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, tx.desc), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#7A8B7A"
+    }
+  }, cat.label, " · ", tx.date, " · ", pl, tx.recurring && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#D4A017"
+    }
+  }, " 🔁")), tx.memo && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#5A7A6A",
+      fontStyle: "italic",
+      marginTop: 1
+    }
+  }, "\"", tx.memo, "\""), tx.splits && tx.splits.length > 0 && tx.splits.map((sp, i) => /*#__PURE__*/React.createElement("span", {
+    key: i,
+    style: {
+      fontSize: 9,
+      color: "#7A8B7A",
+      marginRight: 7
+    }
+  }, "↳", sp.label, ":", fmtDec(sp.amount))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 4,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: "bold",
+      color: "#E07A5F",
+      fontSize: 12
+    }
+  }, "−", fmtDec(tx.amount)), /*#__PURE__*/React.createElement("button", {
+    onClick: onEdit,
+    style: S.iconBtn
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: onDelete,
+    style: S.iconBtn
+  }, "🗑")));
+}
+function EditTxRow({
+  tx,
+  categories,
+  onSave,
+  onCancel
+}) {
+  const [f, setF] = useState({
+    ...tx,
+    memo: tx.memo || ""
+  });
+  const u = (k, v) => setF(p => ({
+    ...p,
+    [k]: v
+  }));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#D4A017",
+      marginBottom: 5
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Desc"), /*#__PURE__*/React.createElement("input", {
+    value: f.desc,
+    onChange: e => u("desc", e.target.value),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Amount"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: f.amount,
+    onChange: e => u("amount", e.target.value),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Category"), /*#__PURE__*/React.createElement("select", {
+    value: f.catId,
+    onChange: e => u("catId", e.target.value),
+    style: S.input
+  }, categories.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.icon, " ", c.label)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Person"), /*#__PURE__*/React.createElement("select", {
+    value: f.person,
+    onChange: e => u("person", e.target.value),
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "both"
+  }, "👥 Joint"), /*#__PURE__*/React.createElement("option", {
+    value: "me"
+  }, "🙋 Me"), /*#__PURE__*/React.createElement("option", {
+    value: "spouse"
+  }, "💑 Spouse")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Memo"), /*#__PURE__*/React.createElement("input", {
+    value: f.memo,
+    onChange: e => u("memo", e.target.value),
+    style: S.input,
+    placeholder: "Optional note..."
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onSave({
+      desc: f.desc,
+      amount: parseFloat(f.amount),
+      catId: f.catId,
+      person: f.person,
+      memo: f.memo
+    }),
+    style: {
+      ...S.btnPrimary,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Save"), /*#__PURE__*/React.createElement("button", {
+    onClick: onCancel,
+    style: {
+      ...S.btnGhost,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Cancel")));
+}
+function SummaryView({
+  year,
+  month,
+  monthIncome,
+  paychecks,
+  allocations,
+  monthTxs,
+  categories,
+  transactions
+}) {
+  const mk1 = pKey(year, month, 1),
+    mk2 = pKey(year, month, 2);
+  const totalSpent = monthTxs.reduce((a, t) => a + t.amount, 0);
+  const spentByCat = {};
+  monthTxs.forEach(t => {
+    spentByCat[t.catId] = (spentByCat[t.catId] || 0) + t.amount;
+  });
+  const allocByCat = {};
+  categories.forEach(c => {
+    allocByCat[c.id] = (parseFloat((allocations[mk1] || {})[c.id]) || 0) + (parseFloat((allocations[mk2] || {})[c.id]) || 0);
+  });
+  const byPerson = {
+    me: 0,
+    spouse: 0,
+    both: 0
+  };
+  monthTxs.forEach(t => {
+    byPerson[t.person] = (byPerson[t.person] || 0) + t.amount;
+  });
+  const sr = monthIncome > 0 ? Math.round((monthIncome - totalSpent) / monthIncome * 100) : 0;
+  const now = new Date();
+  const trendData = {};
+  categories.forEach(c => {
+    trendData[c.id] = [];
+  });
+  for (let i = 2; i >= 0; i--) {
+    let m = now.getMonth() + 1 - i,
+      y = now.getFullYear();
+    if (m < 1) {
+      m += 12;
+      y--;
+    }
+    const txs = transactions.filter(t => t.pk === pKey(y, m, 1) || t.pk === pKey(y, m, 2));
+    categories.forEach(c => {
+      trendData[c.id].push(txs.filter(t => t.catId === c.id).reduce((a, t) => a + t.amount, 0));
+    });
+  }
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: S.statGrid
+  }, /*#__PURE__*/React.createElement(StatCard, {
+    label: "Total Income",
+    value: fmtDec(monthIncome),
+    color: "#74C69D"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "Total Spent",
+    value: fmtDec(totalSpent),
+    color: "#E07A5F"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "Remaining",
+    value: fmtDec(monthIncome - totalSpent),
+    color: monthIncome - totalSpent >= 0 ? "#74C69D" : "#E07A5F"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "Savings Rate",
+    value: `${sr}%`,
+    color: "#D4A017"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "1st–15 Pay",
+    value: fmtDec(paychecks[mk1] || 0),
+    color: "#A8C5DA"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "16–End Pay",
+    value: fmtDec(paychecks[mk2] || 0),
+    color: "#A8C5DA"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "Category Breakdown + 3-Month Trend"), categories.map(cat => {
+    const b = allocByCat[cat.id] || 0,
+      sp = spentByCat[cat.id] || 0;
+    const trend = trendData[cat.id] || [0, 0, 0];
+    const avg = trend.reduce((a, v) => a + v, 0) / 3;
+    if (!b && !sp && avg === 0) return null;
+    const pct = b > 0 ? Math.min(100, sp / b * 100) : 100;
+    const gc = GC[cat.group] || GC.Goals;
+    const overAvg = sp > avg * 1.15 && avg > 0;
+    return /*#__PURE__*/React.createElement("div", {
+      key: cat.id,
+      style: S.summaryRow
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 3,
+        fontSize: 11
+      }
+    }, /*#__PURE__*/React.createElement("span", null, cat.icon, " ", cat.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        alignItems: "center"
+      }
+    }, avg > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: overAvg ? "#E07A5F" : "#7A8B7A"
+      }
+    }, "avg ", fmt(avg), overAvg ? " ↑" : ""), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: sp > b && b > 0 ? "#E07A5F" : "#E8E0D0"
+      }
+    }, fmtDec(sp), " / ", fmtDec(b)))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 3,
+        background: "#0C1520",
+        borderRadius: 3,
+        overflow: "hidden",
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: `${pct}%`,
+        background: pct > 100 ? "#E07A5F" : pct > 80 ? "#D4A017" : gc.accent,
+        height: "100%",
+        borderRadius: 3
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 3
+      }
+    }, trend.map((v, i) => {
+      const maxV = Math.max(...trend, 1);
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 1
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: "100%",
+          height: 14,
+          display: "flex",
+          alignItems: "flex-end"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: "100%",
+          height: `${v / maxV * 100}%`,
+          background: gc.accent,
+          opacity: .45,
+          borderRadius: 2,
+          minHeight: 2
+        }
+      })), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 7,
+          color: "#555"
+        }
+      }, MO[(now.getMonth() - 2 + i + 12) % 12]));
+    })));
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "By Person"), /*#__PURE__*/React.createElement("div", {
+    style: S.statGrid
+  }, /*#__PURE__*/React.createElement(StatCard, {
+    label: "🙋 Me",
+    value: fmtDec(byPerson.me),
+    color: "#74C69D"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "💑 Spouse",
+    value: fmtDec(byPerson.spouse),
+    color: "#A8C5DA"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "👥 Joint",
+    value: fmtDec(byPerson.both),
+    color: "#D4A017"
+  }))));
+}
+function GoalsView({
+  sinkingFunds,
+  setSinkingFunds,
+  savingsGoals,
+  setSavingsGoals,
+  annualExpenses,
+  setAnnualExpenses,
+  givingLog,
+  setGivingLog,
+  currentMonth,
+  notify
+}) {
+  const [addingSink, setAddingSink] = useState(false);
+  const [sinkForm, setSinkForm] = useState({
+    name: "",
+    target: "",
+    monthly: ""
+  });
+  const [addingGoal, setAddingGoal] = useState(false);
+  const [goalForm, setGoalForm] = useState({
+    name: "",
+    target: "",
+    current: "",
+    deadline: ""
+  });
+  const [addingAE, setAddingAE] = useState(false);
+  const [aeForm, setAeForm] = useState({
+    name: "",
+    month: currentMonth,
+    amount: ""
+  });
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [meetingChecks, setMeetingChecks] = useState({});
+  const meetingDone = Object.values(meetingChecks).filter(Boolean).length;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: S.section
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMeetingOpen(p => !p),
+    style: {
+      ...S.card,
+      width: "100%",
+      textAlign: "left",
+      cursor: "pointer",
+      borderColor: "#D4A017",
+      padding: "11px 13px",
+      marginBottom: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: "bold",
+      color: "#D4A017",
+      fontSize: 13
+    }
+  }, "💑 Monthly Money Meeting"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A",
+      marginTop: 1
+    }
+  }, "10-min budget review with your wife · ", meetingDone, "/", MONEY_MEETING_ITEMS.length, " done")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#555"
+    }
+  }, meetingOpen ? "▲" : "▼")), meetingDone > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 3,
+      background: "#0C1520",
+      borderRadius: 3,
+      overflow: "hidden",
+      marginTop: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: `${meetingDone / MONEY_MEETING_ITEMS.length * 100}%`,
+      background: "#D4A017",
+      height: "100%",
+      borderRadius: 3
+    }
+  }))), meetingOpen && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginTop: 3,
+      borderColor: "#D4A017"
+    }
+  }, MONEY_MEETING_ITEMS.map((item, i) => /*#__PURE__*/React.createElement("label", {
+    key: i,
+    style: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 9,
+      marginBottom: 9,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: !!meetingChecks[i],
+    onChange: e => setMeetingChecks(p => ({
+      ...p,
+      [i]: e.target.checked
+    })),
+    style: {
+      marginTop: 2,
+      accentColor: "#D4A017",
+      width: 13,
+      height: 13,
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: meetingChecks[i] ? "#555" : "#E8E0D0",
+      textDecoration: meetingChecks[i] ? "line-through" : "none"
+    }
+  }, item))), meetingDone === MONEY_MEETING_ITEMS.length && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#D4A017",
+      fontSize: 13,
+      marginTop: 3
+    }
+  }, "🎉 Meeting complete! Great work, team."), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMeetingChecks({}),
+    style: {
+      ...S.btnGhost,
+      width: "100%",
+      padding: 7,
+      fontSize: 11,
+      marginTop: 7
+    }
+  }, "Reset"))), /*#__PURE__*/React.createElement("div", {
+    style: S.section
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "📅 Annual Expense Calendar"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingAE(true),
+    style: S.btnOutline
+  }, "＋ Add")), addingAE && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 8,
+      borderColor: "#A8C5DA"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Name"), /*#__PURE__*/React.createElement("input", {
+    value: aeForm.name,
+    onChange: e => setAeForm(p => ({
+      ...p,
+      name: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Month"), /*#__PURE__*/React.createElement("select", {
+    value: aeForm.month,
+    onChange: e => setAeForm(p => ({
+      ...p,
+      month: e.target.value
+    })),
+    style: S.input
+  }, MO.map((m, i) => /*#__PURE__*/React.createElement("option", {
+    key: i,
+    value: i + 1
+  }, m)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Amount"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: aeForm.amount,
+    onChange: e => setAeForm(p => ({
+      ...p,
+      amount: e.target.value
+    })),
+    style: S.input
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (!aeForm.name || !aeForm.amount) return;
+      setAnnualExpenses(p => [...p, {
+        id: "ae_" + Date.now(),
+        name: aeForm.name,
+        month: parseInt(aeForm.month),
+        amount: parseFloat(aeForm.amount)
+      }]);
+      setAeForm({
+        name: "",
+        month: currentMonth,
+        amount: ""
+      });
+      setAddingAE(false);
+      notify("Added ✓");
+    },
+    style: {
+      ...S.btnPrimary,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Add"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingAE(false),
+    style: {
+      ...S.btnGhost,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Cancel"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4,1fr)",
+      gap: 4
+    }
+  }, MO.map((mo, i) => {
+    const mes = annualExpenses.filter(e => e.month === i + 1);
+    const total = mes.reduce((a, e) => a + e.amount, 0);
+    const isCurrent = i + 1 === currentMonth;
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        ...S.card,
+        padding: "7px 8px",
+        borderColor: isCurrent ? "#74C69D" : "#1A2A22",
+        background: isCurrent ? "#1A2E22" : "#141F2A"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        fontWeight: "bold",
+        color: isCurrent ? "#74C69D" : "#7A8B7A",
+        marginBottom: 2
+      }
+    }, mo), mes.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#333"
+      }
+    }, "—") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        fontWeight: "bold",
+        color: "#E8E0D0"
+      }
+    }, fmt(total)), mes.map(e => /*#__PURE__*/React.createElement("div", {
+      key: e.id,
+      style: {
+        fontSize: 8,
+        color: "#7A8B7A",
+        marginTop: 1,
+        display: "flex",
+        justifyContent: "space-between"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        flex: 1,
+        fontSize: 8
+      }
+    }, e.name), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setAnnualExpenses(p => p.filter(x => x.id !== e.id)),
+      style: {
+        background: "none",
+        border: "none",
+        color: "#555",
+        cursor: "pointer",
+        fontSize: 8,
+        padding: 0,
+        flexShrink: 0
+      }
+    }, "✕")))));
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: S.section
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "🎯 Sinking Funds"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingSink(true),
+    style: S.btnOutline
+  }, "＋ Add")), addingSink && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 8,
+      borderColor: "#D4A017"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Name"), /*#__PURE__*/React.createElement("input", {
+    value: sinkForm.name,
+    onChange: e => setSinkForm(p => ({
+      ...p,
+      name: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Target"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: sinkForm.target,
+    onChange: e => setSinkForm(p => ({
+      ...p,
+      target: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "$/month"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: sinkForm.monthly,
+    onChange: e => setSinkForm(p => ({
+      ...p,
+      monthly: e.target.value
+    })),
+    style: S.input
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (!sinkForm.name || !sinkForm.target) return;
+      setSinkingFunds(p => [...p, {
+        id: "sf_" + Date.now(),
+        name: sinkForm.name,
+        target: parseFloat(sinkForm.target),
+        monthly: parseFloat(sinkForm.monthly) || 0,
+        balance: 0
+      }]);
+      setSinkForm({
+        name: "",
+        target: "",
+        monthly: ""
+      });
+      setAddingSink(false);
+      notify("Sinking fund added ✓");
+    },
+    style: {
+      ...S.btnPrimary,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Add"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingSink(false),
+    style: {
+      ...S.btnGhost,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Cancel"))), sinkingFunds.map(sf => {
+    const pct = sf.target > 0 ? Math.min(100, sf.balance / sf.target * 100) : 0;
+    const months = sf.monthly > 0 ? Math.ceil((sf.target - sf.balance) / sf.monthly) : null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: sf.id,
+      style: S.card
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: "bold",
+        fontSize: 12
+      }
+    }, sf.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#7A8B7A",
+        marginTop: 1
+      }
+    }, fmt(sf.balance), " / ", fmt(sf.target), months && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#D4A017"
+      }
+    }, " · ~", months, "mo"), sf.monthly > 0 && /*#__PURE__*/React.createElement("span", null, " · ", fmt(sf.monthly), "/mo"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "relative"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: S.inputPfx
+    }, "$"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: sf.balance || "",
+      onChange: e => setSinkingFunds(p => p.map(s => s.id === sf.id ? {
+        ...s,
+        balance: parseFloat(e.target.value) || 0
+      } : s)),
+      style: {
+        ...S.inlineInput,
+        width: 80,
+        paddingLeft: 18
+      }
+    })), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setSinkingFunds(p => p.filter(s => s.id !== sf.id)),
+      style: S.iconBtn
+    }, "🗑"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 5,
+        background: "#0C1520",
+        borderRadius: 4,
+        overflow: "hidden",
+        marginTop: 6
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: `${pct}%`,
+        background: pct >= 100 ? "#74C69D" : "#D4A017",
+        height: "100%",
+        borderRadius: 4,
+        transition: "width .4s"
+      }
+    })));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: S.section
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "🏆 Savings Goals"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingGoal(true),
+    style: S.btnOutline
+  }, "＋ Add")), addingGoal && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 8,
+      borderColor: "#74C69D"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Goal"), /*#__PURE__*/React.createElement("input", {
+    value: goalForm.name,
+    onChange: e => setGoalForm(p => ({
+      ...p,
+      name: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Target $"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: goalForm.target,
+    onChange: e => setGoalForm(p => ({
+      ...p,
+      target: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Current $"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: goalForm.current,
+    onChange: e => setGoalForm(p => ({
+      ...p,
+      current: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Deadline"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: goalForm.deadline,
+    onChange: e => setGoalForm(p => ({
+      ...p,
+      deadline: e.target.value
+    })),
+    style: S.input
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (!goalForm.name || !goalForm.target) return;
+      setSavingsGoals(p => [...p, {
+        id: "sg_" + Date.now(),
+        ...goalForm,
+        target: parseFloat(goalForm.target),
+        current: parseFloat(goalForm.current) || 0
+      }]);
+      setGoalForm({
+        name: "",
+        target: "",
+        current: "",
+        deadline: ""
+      });
+      setAddingGoal(false);
+      notify("Goal added ✓");
+    },
+    style: {
+      ...S.btnPrimary,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Add"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingGoal(false),
+    style: {
+      ...S.btnGhost,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Cancel"))), savingsGoals.map(g => {
+    const pct = g.target > 0 ? Math.min(100, g.current / g.target * 100) : 0;
+    const days = g.deadline ? Math.ceil((new Date(g.deadline) - new Date()) / 864e5) : null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: g.id,
+      style: S.card
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: "bold",
+        fontSize: 12
+      }
+    }, g.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#7A8B7A",
+        marginTop: 1
+      }
+    }, fmtDec(g.current), " / ", fmt(g.target), " · ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#74C69D"
+      }
+    }, Math.round(pct), "%"), days !== null && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: days < 30 ? "#E07A5F" : "#7A8B7A"
+      }
+    }, " · ", days, "d left"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "relative"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: S.inputPfx
+    }, "$"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: g.current || "",
+      onChange: e => setSavingsGoals(p => p.map(x => x.id === g.id ? {
+        ...x,
+        current: parseFloat(e.target.value) || 0
+      } : x)),
+      style: {
+        ...S.inlineInput,
+        width: 80,
+        paddingLeft: 18
+      }
+    })), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setSavingsGoals(p => p.filter(x => x.id !== g.id)),
+      style: S.iconBtn
+    }, "🗑"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 5,
+        background: "#0C1520",
+        borderRadius: 4,
+        overflow: "hidden",
+        marginTop: 6
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: `${pct}%`,
+        background: pct >= 100 ? "#74C69D" : "#A8C5DA",
+        height: "100%",
+        borderRadius: 4,
+        transition: "width .4s"
+      }
+    })), pct >= 100 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: "#74C69D",
+        fontSize: 10,
+        marginTop: 2,
+        textAlign: "center"
+      }
+    }, "🎉 Goal reached!"));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: S.section
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "🤝 Giving Tracker"), /*#__PURE__*/React.createElement("div", {
+    style: S.card
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 9
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A"
+    }
+  }, "Yearly Giving Goal"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 5
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#7A8B7A",
+      fontSize: 12
+    }
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: givingLog.goal || "",
+    onChange: e => setGivingLog(p => ({
+      ...p,
+      goal: parseFloat(e.target.value) || 0
+    })),
+    style: {
+      ...S.inlineInput,
+      width: 80
+    }
+  }))), givingLog.goal > 0 && (() => {
+    const total = (givingLog.entries || []).reduce((a, e) => a + e.amount, 0);
+    const pct = Math.min(100, total / givingLog.goal * 100);
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: 11,
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#74C69D"
+      }
+    }, fmtDec(total), " given"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#7A8B7A"
+      }
+    }, fmtDec(givingLog.goal - total), " remaining")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 5,
+        background: "#0C1520",
+        borderRadius: 4,
+        overflow: "hidden",
+        marginBottom: 7
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: `${pct}%`,
+        background: "#74C69D",
+        height: "100%",
+        borderRadius: 4
+      }
+    })));
+  })(), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      const amt = prompt("Amount given:");
+      const note = prompt("Where/what for?");
+      if (amt && parseFloat(amt) > 0) setGivingLog(p => ({
+        ...p,
+        entries: [...(p.entries || []), {
+          id: Date.now(),
+          amount: parseFloat(amt),
+          note: note || "",
+          date: new Date().toISOString().slice(0, 10)
+        }]
+      }));
+    },
+    style: {
+      ...S.btnGhost,
+      width: "100%",
+      padding: 7,
+      fontSize: 11
+    }
+  }, "＋ Log Giving"), (givingLog.entries || []).slice(0, 5).map(e => /*#__PURE__*/React.createElement("div", {
+    key: e.id,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 10,
+      color: "#7A8B7A",
+      marginTop: 5
+    }
+  }, /*#__PURE__*/React.createElement("span", null, e.date, " · ", e.note || "—"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#74C69D"
+    }
+  }, fmtDec(e.amount)))))));
+}
+function DebtView({
+  debts,
+  setDebts,
+  notify
+}) {
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    balance: "",
+    rate: "",
+    minPayment: "",
+    type: "credit_card"
+  });
+  const [method, setMethod] = useState("avalanche");
+  const [extra, setExtra] = useState("");
+  const fu = (k, v) => setForm(p => ({
+    ...p,
+    [k]: v
+  }));
+  const totalDebt = debts.reduce((a, d) => a + d.balance, 0);
+  const totalMin = debts.reduce((a, d) => a + d.minPayment, 0);
+  const extraAmt = parseFloat(extra) || 0;
+  const sorted = [...debts].sort((a, b) => method === "avalanche" ? b.rate - a.rate : a.balance - b.balance);
+  const payoffMonths = (debt, isTarget) => {
+    if (!debt.balance || !debt.minPayment) return null;
+    const r = debt.rate / 100 / 12;
+    const pmt = debt.minPayment + (isTarget ? extraAmt : 0);
+    if (pmt <= 0) return null;
+    if (r === 0) return Math.ceil(debt.balance / pmt);
+    const n = Math.log(pmt / (pmt - r * debt.balance)) / Math.log(1 + r);
+    return isFinite(n) && n > 0 ? Math.ceil(n) : null;
+  };
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 9
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "📉 Debt Payoff"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAdding(true),
+    style: S.btnOutline
+  }, "＋ Add Debt")), debts.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 11,
+      borderColor: "#E07A5F"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.statGrid
+  }, /*#__PURE__*/React.createElement(StatCard, {
+    label: "Total Debt",
+    value: fmtDec(totalDebt),
+    color: "#E07A5F"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "Min Payments",
+    value: fmtDec(totalMin) + "/mo",
+    color: "#D4A017"
+  }), /*#__PURE__*/React.createElement(StatCard, {
+    label: "# Debts",
+    value: debts.length,
+    color: "#7A8B7A"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 9,
+      borderTop: "1px solid #1E3028",
+      paddingTop: 9
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 5
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Strategy"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMethod("avalanche"),
+    style: {
+      ...S.periodBtn,
+      ...(method === "avalanche" ? S.periodBtnActive : {}),
+      fontSize: 9
+    }
+  }, "⚡ Avalanche"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMethod("snowball"),
+    style: {
+      ...S.periodBtn,
+      ...(method === "snowball" ? S.periodBtnActive : {}),
+      fontSize: 9
+    }
+  }, "⛄ Snowball"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#7A8B7A",
+      marginBottom: 6
+    }
+  }, method === "avalanche" ? "Highest interest first — saves the most money." : "Smallest balance first — quick wins build momentum."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 7
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A",
+      whiteSpace: "nowrap"
+    }
+  }, "Extra /mo"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative",
+      flex: 1,
+      maxWidth: 120
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.inputPfx
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: extra,
+    onChange: e => setExtra(e.target.value),
+    style: {
+      ...S.input,
+      paddingLeft: 20
+    },
+    placeholder: "0"
+  }))))), adding && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 9,
+      borderColor: "#E07A5F"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Name"), /*#__PURE__*/React.createElement("input", {
+    value: form.name,
+    onChange: e => fu("name", e.target.value),
+    style: S.input,
+    placeholder: "Chase Visa"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Type"), /*#__PURE__*/React.createElement("select", {
+    value: form.type,
+    onChange: e => fu("type", e.target.value),
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "credit_card"
+  }, "💳 Credit Card"), /*#__PURE__*/React.createElement("option", {
+    value: "student"
+  }, "🎓 Student Loan"), /*#__PURE__*/React.createElement("option", {
+    value: "auto"
+  }, "🚗 Auto"), /*#__PURE__*/React.createElement("option", {
+    value: "personal"
+  }, "👤 Personal"), /*#__PURE__*/React.createElement("option", {
+    value: "medical"
+  }, "❤️ Medical"), /*#__PURE__*/React.createElement("option", {
+    value: "other"
+  }, "📦 Other"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Balance $"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: form.balance,
+    onChange: e => fu("balance", e.target.value),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "APR %"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: form.rate,
+    onChange: e => fu("rate", e.target.value),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Min Payment"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: form.minPayment,
+    onChange: e => fu("minPayment", e.target.value),
+    style: S.input
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (!form.name || !form.balance) return;
+      setDebts(p => [...p, {
+        id: "d_" + Date.now(),
+        ...form,
+        balance: parseFloat(form.balance),
+        rate: parseFloat(form.rate) || 0,
+        minPayment: parseFloat(form.minPayment) || 0
+      }]);
+      setForm({
+        name: "",
+        balance: "",
+        rate: "",
+        minPayment: "",
+        type: "credit_card"
+      });
+      setAdding(false);
+      notify("Debt added ✓");
+    },
+    style: {
+      ...S.btnPrimary,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Add"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAdding(false),
+    style: {
+      ...S.btnGhost,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Cancel"))), debts.length === 0 ? /*#__PURE__*/React.createElement(EmptyState, {
+    icon: "🎉",
+    msg: "No debts logged. Add one to track your payoff."
+  }) : sorted.map((d, i) => {
+    const isTarget = i === 0;
+    const months = payoffMonths(d, isTarget);
+    const typeIcon = {
+      credit_card: "💳",
+      student: "🎓",
+      auto: "🚗",
+      personal: "👤",
+      medical: "❤️",
+      other: "📦"
+    }[d.type] || "📦";
+    return /*#__PURE__*/React.createElement("div", {
+      key: d.id,
+      style: {
+        ...S.card,
+        borderColor: isTarget ? "#E07A5F" : "#1A2A22"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("span", null, typeIcon), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: "bold",
+        fontSize: 12
+      }
+    }, d.name), isTarget && /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: "#3D1F18",
+        color: "#E07A5F",
+        fontSize: 8,
+        padding: "1px 5px",
+        borderRadius: 7
+      }
+    }, "TARGET")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#7A8B7A",
+        marginTop: 2
+      }
+    }, d.rate, "% APR · ", fmt(d.minPayment), "/mo", months && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: isTarget ? "#E07A5F" : "#7A8B7A"
+      }
+    }, " · ~", months, "mo"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "relative"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: S.inputPfx
+    }, "$"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: d.balance || "",
+      onChange: e => setDebts(p => p.map(x => x.id === d.id ? {
+        ...x,
+        balance: parseFloat(e.target.value) || 0
+      } : x)),
+      style: {
+        ...S.inlineInput,
+        width: 85,
+        paddingLeft: 18
+      }
+    })), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setDebts(p => p.filter(x => x.id !== d.id)),
+      style: S.iconBtn
+    }, "🗑"))));
+  }));
+}
+function WealthView({
+  netWorth,
+  setNetWorth,
+  windfalls,
+  setWindfalls,
+  debts,
+  savingsGoals,
+  monthIncome,
+  notify
+}) {
+  const [addingNW, setAddingNW] = useState(false);
+  const [nwForm, setNwForm] = useState({
+    date: new Date().toISOString().slice(0, 7),
+    assets: "",
+    liabilities: ""
+  });
+  const [addingWF, setAddingWF] = useState(false);
+  const [wfForm, setWfForm] = useState({
+    amount: "",
+    source: ""
+  });
+  const addSnap = () => {
+    const a = parseFloat(nwForm.assets) || 0,
+      l = parseFloat(nwForm.liabilities) || 0;
+    setNetWorth(p => [...p, {
+      id: Date.now(),
+      date: nwForm.date,
+      assets: a,
+      liabilities: l,
+      net: a - l
+    }].sort((a, b) => a.date < b.date ? -1 : 1));
+    setAddingNW(false);
+    notify("Snapshot saved ✓");
+  };
+  const applyWindfall = amount => {
+    const totalDebt = debts.reduce((a, d) => a + d.balance, 0);
+    const efGoal = savingsGoals.find(g => g.name.toLowerCase().includes("emergency"));
+    const efNeeded = monthIncome * 3 - (efGoal?.current || 0);
+    const steps = [];
+    let rem = amount;
+    if (efNeeded > 0 && rem > 0) {
+      const take = Math.min(rem, efNeeded);
+      steps.push({
+        label: "Emergency Fund",
+        amount: take
+      });
+      rem -= take;
+    }
+    if (totalDebt > 0 && rem > 0) {
+      const take = Math.min(rem, totalDebt);
+      steps.push({
+        label: "Highest-interest debt",
+        amount: take
+      });
+      rem -= take;
+    }
+    if (rem > 0) steps.push({
+      label: "Sinking funds / savings",
+      amount: rem
+    });
+    return steps;
+  };
+  const latest = netWorth[netWorth.length - 1];
+  const prev = netWorth[netWorth.length - 2];
+  const delta = latest && prev ? latest.net - prev.net : null;
+  const wfAmt = parseFloat(wfForm.amount) || 0;
+  const wfSteps = wfAmt > 0 ? applyWindfall(wfAmt) : [];
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "📈 Net Worth"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingNW(true),
+    style: S.btnOutline
+  }, "＋ Snapshot")), latest && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#74C69D",
+      marginBottom: 9
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Current · ", latest.date), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: latest.net >= 0 ? "#74C69D" : "#E07A5F",
+      margin: "2px 0"
+    }
+  }, fmtDec(latest.net)), delta !== null && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: delta >= 0 ? "#74C69D" : "#E07A5F"
+    }
+  }, delta >= 0 ? "▲" : "▼", " ", fmtDec(Math.abs(delta)), " vs last"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 14,
+      marginTop: 6,
+      fontSize: 10,
+      color: "#7A8B7A"
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Assets: ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#74C69D"
+    }
+  }, fmtDec(latest.assets))), /*#__PURE__*/React.createElement("span", null, "Liabilities: ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#E07A5F"
+    }
+  }, fmtDec(latest.liabilities))))), addingNW && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 9,
+      borderColor: "#A8C5DA"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Month"), /*#__PURE__*/React.createElement("input", {
+    type: "month",
+    value: nwForm.date,
+    onChange: e => setNwForm(p => ({
+      ...p,
+      date: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Assets $"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: nwForm.assets,
+    onChange: e => setNwForm(p => ({
+      ...p,
+      assets: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Liabilities $"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: nwForm.liabilities,
+    onChange: e => setNwForm(p => ({
+      ...p,
+      liabilities: e.target.value
+    })),
+    style: S.input
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: addSnap,
+    style: {
+      ...S.btnPrimary,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Save"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingNW(false),
+    style: {
+      ...S.btnGhost,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Cancel"))), netWorth.length > 1 && [...netWorth].reverse().slice(0, 6).map(s => /*#__PURE__*/React.createElement("div", {
+    key: s.id,
+    style: {
+      ...S.summaryRow,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A"
+    }
+  }, s.date), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 7
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: "bold",
+      color: s.net >= 0 ? "#74C69D" : "#E07A5F"
+    }
+  }, fmtDec(s.net)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setNetWorth(p => p.filter(x => x.id !== s.id)),
+    style: S.iconBtn
+  }, "🗑")))), netWorth.length === 0 && /*#__PURE__*/React.createElement(EmptyState, {
+    icon: "📊",
+    msg: "Log your first snapshot to start tracking."
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 9
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "💰 Windfall Waterfall"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingWF(true),
+    style: S.btnOutline
+  }, "＋ Got Extra $?")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A",
+      marginBottom: 7
+    }
+  }, "Got a bonus, refund, or unexpected cash? Here's exactly where it goes."), addingWF && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#D4A017",
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Amount $"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: wfForm.amount,
+    onChange: e => setWfForm(p => ({
+      ...p,
+      amount: e.target.value
+    })),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Source"), /*#__PURE__*/React.createElement("input", {
+    value: wfForm.source,
+    onChange: e => setWfForm(p => ({
+      ...p,
+      source: e.target.value
+    })),
+    style: S.input,
+    placeholder: "Tax refund"
+  }))), wfSteps.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 9,
+      background: "#0C1520",
+      borderRadius: 6,
+      padding: "9px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#D4A017",
+      marginBottom: 5
+    }
+  }, "💡 Recommended allocation:"), wfSteps.map((st, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 11,
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#7A8B7A"
+    }
+  }, "→ ", st.label), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#E8E0D0",
+      fontWeight: "bold"
+    }
+  }, fmtDec(st.amount))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (!wfForm.amount) return;
+      setWindfalls(p => [{
+        id: Date.now(),
+        ...wfForm,
+        amount: wfAmt,
+        steps: wfSteps
+      }, ...p]);
+      setWfForm({
+        amount: "",
+        source: ""
+      });
+      setAddingWF(false);
+      notify("Windfall logged ✓");
+    },
+    style: {
+      ...S.btnPrimary,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Log"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddingWF(false),
+    style: {
+      ...S.btnGhost,
+      flex: 1,
+      padding: 7,
+      fontSize: 11
+    }
+  }, "Cancel"))), windfalls.slice(0, 3).map(wf => /*#__PURE__*/React.createElement("div", {
+    key: wf.id,
+    style: {
+      ...S.card,
+      marginTop: 5
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: "bold",
+      fontSize: 12,
+      color: "#D4A017"
+    }
+  }, wf.source || "Windfall"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#74C69D",
+      fontWeight: "bold"
+    }
+  }, fmtDec(wf.amount))), (wf.steps || []).map((st, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A",
+      marginTop: 1
+    }
+  }, "→ ", st.label, ": ", fmtDec(st.amount)))))));
+}
+function PlannerView({
+  income,
+  alloc,
+  categories,
+  spentByCat,
+  debts,
+  sinkingFunds,
+  savingsGoals,
+  monthIncome,
+  riskScore,
+  periodProgress,
+  transactions
+}) {
+  const [whatIfCat, setWhatIfCat] = useState("");
+  const [whatIfReduce, setWhatIfReduce] = useState("");
+  const [whatIfTarget, setWhatIfTarget] = useState("");
+  const totalDebt = debts.reduce((a, d) => a + d.balance, 0);
+  const efGoal = savingsGoals.find(g => g.name.toLowerCase().includes("emergency"));
+  const insights = [];
+  if (riskScore >= 65) insights.push({
+    color: "#E07A5F",
+    icon: "⚠️",
+    text: "Budget margin under 10%. Aim for 15–20% buffer to absorb surprises without breaking the plan."
+  });
+  if (totalDebt > monthIncome * 6) insights.push({
+    color: "#E07A5F",
+    icon: "📉",
+    text: `You carry ${fmtDec(totalDebt)} in debt — over 6 months of income. Every extra dollar should attack this.`
+  });
+  if (!efGoal || efGoal.current < 1000) insights.push({
+    color: "#E07A5F",
+    icon: "🆘",
+    text: "No $1,000 emergency fund yet. This is Baby Step 1 — do this before everything else."
+  });else if (efGoal.current < monthIncome * 3) insights.push({
+    color: "#D4A017",
+    icon: "🆘",
+    text: `Emergency fund is ${fmtDec(efGoal.current)}. Target is ${fmtDec(monthIncome * 3)} (3 months income). Keep building.`
+  });
+  const diningA = parseFloat(alloc["dining"]) || 0,
+    diningS = spentByCat["dining"] || 0;
+  if (diningA > 0 && diningS / diningA > 0.8 && periodProgress < 0.6) insights.push({
+    color: "#D4A017",
+    icon: "🍽️",
+    text: "Dining is 80%+ spent before the period is half over. Meal planning could free $100–200/month."
+  });
+  if (insights.length === 0) insights.push({
+    color: "#74C69D",
+    icon: "✅",
+    text: "Budget is looking healthy. Great discipline!"
+  });
+  const BabySteps = [{
+    n: 1,
+    label: "Save $1,000 starter emergency fund",
+    done: !!(efGoal && efGoal.current >= 1000)
+  }, {
+    n: 2,
+    label: "Pay off all non-mortgage debt (snowball)",
+    done: totalDebt < 500
+  }, {
+    n: 3,
+    label: "Build 3–6 month emergency fund",
+    done: !!(efGoal && efGoal.current >= monthIncome * 3)
+  }, {
+    n: 4,
+    label: "Invest 15% of income for retirement",
+    done: false
+  }, {
+    n: 5,
+    label: "Save for children's education",
+    done: false
+  }, {
+    n: 6,
+    label: "Pay off the home early",
+    done: false
+  }, {
+    n: 7,
+    label: "Build wealth and give generously",
+    done: false
+  }];
+  const currentStep = BabySteps.findIndex(s => !s.done);
+  const saving = parseFloat(whatIfReduce) || 0;
+  const targetDebt = debts.find(d => d.id === whatIfTarget);
+  let whatIfResult = null;
+  if (saving > 0 && targetDebt && targetDebt.balance > 0 && targetDebt.minPayment > 0) {
+    const r = targetDebt.rate / 100 / 12;
+    const calc = pmt => r === 0 ? targetDebt.balance / pmt : Math.log(pmt / (pmt - r * targetDebt.balance)) / Math.log(1 + r);
+    const m1 = Math.ceil(calc(targetDebt.minPayment)),
+      m2 = Math.ceil(calc(targetDebt.minPayment + saving));
+    const intSaved = targetDebt.minPayment * m1 - targetDebt.balance - (targetDebt.minPayment + saving) * m2 + targetDebt.balance;
+    if (isFinite(m1) && isFinite(m2)) whatIfResult = {
+      monthsNow: m1,
+      monthsNew: m2,
+      saved: m1 - m2,
+      intSaved: Math.max(0, intSaved)
+    };
+  }
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 13
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "💡 Financial Insights"), insights.map((ins, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      ...S.card,
+      borderColor: ins.color,
+      marginBottom: 6,
+      display: "flex",
+      gap: 8,
+      alignItems: "flex-start"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 17,
+      flexShrink: 0
+    }
+  }, ins.icon), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#E8E0D0",
+      lineHeight: 1.5
+    }
+  }, ins.text)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 13
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "👶 Financial Baby Steps"), BabySteps.map((s, i) => {
+    const isCurrent = i === currentStep;
+    return /*#__PURE__*/React.createElement("div", {
+      key: s.n,
+      style: {
+        ...S.card,
+        marginBottom: 4,
+        padding: "8px 11px",
+        borderColor: s.done ? "#2D6A4F" : isCurrent ? "#D4A017" : "#1A2A22",
+        opacity: !s.done && !isCurrent && i > currentStep ? .4 : 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 22,
+        height: 22,
+        borderRadius: "50%",
+        flexShrink: 0,
+        background: s.done ? "#2D6A4F" : isCurrent ? "#D4A017" : "#1E3028",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 10,
+        fontWeight: "bold",
+        color: s.done ? "#fff" : isCurrent ? "#000" : "#555"
+      }
+    }, s.done ? "✓" : s.n), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: s.done ? "#74C69D" : isCurrent ? "#D4A017" : "#7A8B7A",
+        fontWeight: isCurrent ? "bold" : "normal"
+      }
+    }, s.label), isCurrent && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#6A5010",
+        marginTop: 1
+      }
+    }, "← You are here"))));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 13
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "🔮 What-If Simulator"), /*#__PURE__*/React.createElement("div", {
+    style: S.card
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A",
+      marginBottom: 9
+    }
+  }, "If I cut a category and put that money toward a debt — how much faster do I pay it off?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Cut from"), /*#__PURE__*/React.createElement("select", {
+    value: whatIfCat,
+    onChange: e => {
+      setWhatIfCat(e.target.value);
+      setWhatIfReduce(Math.round((parseFloat(alloc[e.target.value]) || 0) * 0.25) || "");
+    },
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Category..."), categories.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.icon, " ", c.label)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Save $/period"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: whatIfReduce,
+    onChange: e => setWhatIfReduce(e.target.value),
+    style: S.input,
+    placeholder: "0"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      gridColumn: "1/-1"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Apply to debt"), /*#__PURE__*/React.createElement("select", {
+    value: whatIfTarget,
+    onChange: e => setWhatIfTarget(e.target.value),
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Pick debt..."), debts.map(d => /*#__PURE__*/React.createElement("option", {
+    key: d.id,
+    value: d.id
+  }, d.name, " — ", fmtDec(d.balance)))))), whatIfResult && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 11,
+      background: "#0C1520",
+      borderRadius: 6,
+      padding: "10px",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A",
+      marginBottom: 4
+    }
+  }, "Payoff changes from"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: "bold"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#E07A5F"
+    }
+  }, whatIfResult.monthsNow, " mo"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#555",
+      margin: "0 7px"
+    }
+  }, "→"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#74C69D"
+    }
+  }, whatIfResult.monthsNew, " mo")), whatIfResult.saved > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#D4A017",
+      fontSize: 11,
+      marginTop: 4
+    }
+  }, "🎉 ", whatIfResult.saved, " months faster · ~", fmtDec(whatIfResult.intSaved), " interest saved")), debts.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#555",
+      marginTop: 6
+    }
+  }, "Add debts in the Debt tab to use the simulator."))));
+}
+function SettingsModal({
+  apiKey,
+  onSave,
+  onClose
+}) {
+  const [key, setKey] = useState(apiKey || "");
+  const [show, setShow] = useState(false);
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "⚙️ Settings",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#A8C5DA",
+      marginBottom: 11
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: "bold",
+      color: "#A8C5DA",
+      fontSize: 12,
+      marginBottom: 4
+    }
+  }, "🔑 Anthropic API Key"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A",
+      lineHeight: 1.6,
+      marginBottom: 9
+    }
+  }, "Powers receipt scanning and bank statement parsing. Stored only on this device — never synced to Firebase or visible in the app's code on GitHub."), /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "API Key"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: show ? "text" : "password",
+    value: key,
+    onChange: e => setKey(e.target.value),
+    style: {
+      ...S.input,
+      fontFamily: "monospace",
+      paddingRight: 55
+    },
+    placeholder: "sk-ant-..."
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShow(p => !p),
+    style: {
+      position: "absolute",
+      right: 8,
+      top: "50%",
+      transform: "translateY(-50%)",
+      background: "none",
+      border: "none",
+      color: "#7A8B7A",
+      cursor: "pointer",
+      fontSize: 10
+    }
+  }, show ? "Hide" : "Show"))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      onSave(key);
+      onClose();
+    },
+    style: {
+      ...S.btnPrimary,
+      width: "100%",
+      padding: 10,
+      fontSize: 13,
+      marginBottom: 7
+    }
+  }, "Save Key"), apiKey && /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      onSave("");
+      onClose();
+    },
+    style: {
+      ...S.btnGhost,
+      width: "100%",
+      padding: 8,
+      fontSize: 12,
+      borderColor: "#E07A5F",
+      color: "#E07A5F"
+    }
+  }, "Remove Key"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#555",
+      marginTop: 11,
+      textAlign: "center"
+    }
+  }, "Get your key at console.anthropic.com → API Keys"));
+}
+function InboxView({
+  pendingTxs,
+  setPendingTxs,
+  categories,
+  addTx,
+  apiKey,
+  notify,
+  onNeedKey
+}) {
+  const [scanning, setScanning] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [editCat, setEditCat] = useState({}); // id→catId overrides
+  const receiptRef = useRef();
+  const statementRef = useRef();
+  const pending = pendingTxs.filter(t => t.status === "pending");
+  const approved = pendingTxs.filter(t => t.status === "approved").length;
+  const RECEIPT_PROMPT = cats => `Analyze this receipt image and return ONLY a JSON object (no markdown):
+{"merchant":"store name","amount":0.00,"date":"YYYY-MM-DD or null","suggestedCat":"category_id","confidence":"high/medium/low","notes":"brief description"}
+Available category IDs: ${cats}
+Use today ${new Date().toISOString().slice(0, 10)} if date not visible. Amount should be the total paid.`;
+  const STATEMENT_PROMPT = cats => `Parse this bank statement and return ONLY a JSON array (no markdown):
+[{"desc":"transaction description","amount":0.00,"date":"YYYY-MM-DD","suggestedCat":"category_id","confidence":"high/medium/low"}]
+Only include spending/debits (money going out). Skip deposits, transfers, credits.
+Available category IDs and labels:
+${cats}`;
+  const catList = categories.map(c => `${c.id}: ${c.label}`).join(", ");
+  const handleReceipt = async e => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!apiKey) {
+      notify("Add your API key in ⚙️ Settings first", "err");
+      onNeedKey();
+      return;
+    }
+    setScanning(true);
+    try {
+      const b64 = await compressImage(file);
+      const raw = await callClaude(apiKey, RECEIPT_PROMPT(catList), b64, "image/jpeg");
+      const p = parseJSON(raw);
+      if (!p || !p.amount) {
+        notify("Couldn't read receipt — try a clearer photo", "err");
+        setScanning(false);
+        return;
+      }
+      setPendingTxs(prev => [...prev, {
+        id: Date.now(),
+        source: "receipt",
+        desc: p.merchant || "Receipt",
+        amount: parseFloat(p.amount) || 0,
+        date: p.date || new Date().toISOString().slice(0, 10),
+        suggestedCat: p.suggestedCat || categories[0]?.id,
+        confidence: p.confidence || "medium",
+        notes: p.notes || "",
+        status: "pending"
+      }]);
+      notify("Receipt scanned ✓");
+    } catch (e) {
+      notify("Scan failed: " + e.message, "err");
+    }
+    setScanning(false);
+  };
+  const handleStatement = async e => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!apiKey) {
+      notify("Add your API key in ⚙️ Settings first", "err");
+      onNeedKey();
+      return;
+    }
+    setParsing(true);
+    try {
+      let raw;
+      if (file.type === "application/pdf") {
+        const b64 = await fileToBase64(file);
+        raw = await callClaude(apiKey, STATEMENT_PROMPT(catList), null, null, b64);
+      } else {
+        const text = await file.text();
+        raw = await callClaude(apiKey, STATEMENT_PROMPT(catList) + "\n\nCSV:\n" + text);
+      }
+      const rows = parseJSON(raw);
+      if (!rows || !Array.isArray(rows)) {
+        notify("Couldn't parse statement", "err");
+        setParsing(false);
+        return;
+      }
+      const newItems = rows.filter(r => r.amount > 0).map((r, i) => ({
+        id: Date.now() + i,
+        source: "statement",
+        desc: r.desc || "Transaction",
+        amount: parseFloat(r.amount) || 0,
+        date: r.date || new Date().toISOString().slice(0, 10),
+        suggestedCat: r.suggestedCat || categories[0]?.id,
+        confidence: r.confidence || "medium",
+        notes: "",
+        status: "pending"
+      }));
+      setPendingTxs(prev => [...prev, ...newItems]);
+      notify(`${newItems.length} transactions imported ✓`);
+    } catch (e) {
+      notify("Upload failed: " + e.message, "err");
+    }
+    setParsing(false);
+  };
+  const getEffectiveCat = item => editCat[item.id] || item.suggestedCat;
+  const approveSingle = item => {
+    const catId = getEffectiveCat(item);
+    addTx({
+      desc: item.desc,
+      amount: item.amount,
+      date: item.date,
+      catId,
+      person: "both",
+      memo: item.notes || ""
+    });
+    setPendingTxs(p => p.map(t => t.id === item.id ? {
+      ...t,
+      status: "approved",
+      suggestedCat: catId
+    } : t));
+  };
+  const skip = id => setPendingTxs(p => p.map(t => t.id === id ? {
+    ...t,
+    status: "skipped"
+  } : t));
+  const approveAll = () => {
+    pending.forEach(item => addTx({
+      desc: item.desc,
+      amount: item.amount,
+      date: item.date,
+      catId: getEffectiveCat(item),
+      person: "both",
+      memo: item.notes || ""
+    }));
+    setPendingTxs(p => p.map(t => t.status === "pending" ? {
+      ...t,
+      status: "approved"
+    } : t));
+    notify(`${pending.length} transactions approved ✓`);
+  };
+  const clearDone = () => setPendingTxs(p => p.filter(t => t.status === "pending"));
+  const confColor = c => c === "high" ? "#74C69D" : c === "medium" ? "#D4A017" : "#7A8B7A";
+  return /*#__PURE__*/React.createElement(React.Fragment, null, !apiKey && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#E07A5F",
+      marginBottom: 11,
+      display: "flex",
+      gap: 9,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, "⚙️"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: "bold",
+      color: "#E07A5F",
+      fontSize: 12,
+      marginBottom: 2
+    }
+  }, "API Key Required"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A8B7A"
+    }
+  }, "Add your Anthropic API key in Settings to enable receipt scanning and statement parsing.")), /*#__PURE__*/React.createElement("button", {
+    onClick: onNeedKey,
+    style: {
+      ...S.btnOutline,
+      borderColor: "#E07A5F",
+      color: "#E07A5F",
+      whiteSpace: "nowrap"
+    }
+  }, "⚙️ Set Key")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 8,
+      marginBottom: 13
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => receiptRef.current?.click(),
+    disabled: scanning,
+    style: {
+      ...S.card,
+      cursor: "pointer",
+      textAlign: "center",
+      borderColor: "#74C69D",
+      padding: "14px 8px",
+      opacity: scanning ? .6 : 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      marginBottom: 4
+    }
+  }, scanning ? "⏳" : "📸"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: "bold",
+      fontSize: 12,
+      color: "#74C69D"
+    }
+  }, scanning ? "Scanning..." : "Scan Receipt"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#7A8B7A",
+      marginTop: 2
+    }
+  }, "Take photo or upload image")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => statementRef.current?.click(),
+    disabled: parsing,
+    style: {
+      ...S.card,
+      cursor: "pointer",
+      textAlign: "center",
+      borderColor: "#A8C5DA",
+      padding: "14px 8px",
+      opacity: parsing ? .6 : 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      marginBottom: 4
+    }
+  }, parsing ? "⏳" : "📄"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: "bold",
+      fontSize: 12,
+      color: "#A8C5DA"
+    }
+  }, parsing ? "Parsing..." : "Upload Statement"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#7A8B7A",
+      marginTop: 2
+    }
+  }, "CSV or PDF from your bank")), /*#__PURE__*/React.createElement("input", {
+    ref: receiptRef,
+    type: "file",
+    accept: "image/*",
+    capture: "camera",
+    onChange: handleReceipt,
+    style: {
+      display: "none"
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    ref: statementRef,
+    type: "file",
+    accept: ".csv,.pdf,text/csv,application/pdf",
+    onChange: handleStatement,
+    style: {
+      display: "none"
+    }
+  })), pending.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.sectionTitle
+  }, "⏳ Pending Approval (", pending.length, ")"), /*#__PURE__*/React.createElement("button", {
+    onClick: approveAll,
+    style: {
+      ...S.btnPrimary,
+      padding: "4px 11px",
+      fontSize: 11
+    }
+  }, "✓ Approve All")), pending.map(item => {
+    const cat = categories.find(c => c.id === getEffectiveCat(item)) || categories[0];
+    const gc = GC[cat?.group] || GC.Goals;
+    return /*#__PURE__*/React.createElement("div", {
+      key: item.id,
+      style: {
+        ...S.card,
+        borderColor: "#2D4A35",
+        marginBottom: 7
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: 6
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: "bold",
+        fontSize: 13,
+        color: "#E8E0D0",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap"
+      }
+    }, item.desc), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#7A8B7A",
+        marginTop: 1
+      }
+    }, item.date, " · ", item.source === "receipt" ? "📸 Receipt" : "📄 Statement"), item.notes && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: "#5A7A6A",
+        fontStyle: "italic",
+        marginTop: 1
+      }
+    }, item.notes)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right",
+        flexShrink: 0,
+        marginLeft: 9
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: "bold",
+        fontSize: 14,
+        color: "#E07A5F"
+      }
+    }, "−", fmtDec(item.amount)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: confColor(item.confidence),
+        marginTop: 1
+      }
+    }, item.confidence, " confidence"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: S.microLabel
+    }, "Suggested Category"), /*#__PURE__*/React.createElement("select", {
+      value: getEffectiveCat(item),
+      onChange: e => setEditCat(p => ({
+        ...p,
+        [item.id]: e.target.value
+      })),
+      style: {
+        ...S.input,
+        borderColor: gc.accent
+      }
+    }, GROUPS.map(g => /*#__PURE__*/React.createElement("optgroup", {
+      key: g,
+      label: `── ${g} ──`
+    }, categories.filter(c => c.group === g).map(c => /*#__PURE__*/React.createElement("option", {
+      key: c.id,
+      value: c.id
+    }, c.icon, " ", c.label)))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => approveSingle(item),
+      style: {
+        ...S.btnPrimary,
+        padding: 8,
+        fontSize: 12
+      }
+    }, "✓ Approve"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => skip(item.id),
+      style: {
+        ...S.btnGhost,
+        padding: 8,
+        fontSize: 12
+      }
+    }, "Skip")));
+  })), pending.length === 0 && pendingTxs.length === 0 && /*#__PURE__*/React.createElement(EmptyState, {
+    icon: "📥",
+    msg: "No pending transactions. Scan a receipt or upload a bank statement to get started."
+  }), pending.length === 0 && pendingTxs.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "20px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      marginBottom: 6
+    }
+  }, "✅"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#74C69D",
+      fontSize: 13,
+      fontWeight: "bold"
+    }
+  }, "All caught up!"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#7A8B7A",
+      fontSize: 11,
+      marginTop: 3
+    }
+  }, approved, " transaction", approved !== 1 ? "s" : "", " approved")), (approved > 0 || pendingTxs.filter(t => t.status === "skipped").length > 0) && /*#__PURE__*/React.createElement("button", {
+    onClick: clearDone,
+    style: {
+      ...S.btnGhost,
+      width: "100%",
+      padding: 8,
+      fontSize: 11,
+      marginTop: 8,
+      color: "#555",
+      borderColor: "#1E3028"
+    }
+  }, "Clear approved/skipped history"));
+}
+function SyncModal({
+  householdId,
+  deviceName,
+  syncEnabled,
+  lastSync,
+  syncStatus,
+  onSetup,
+  onJoin,
+  onDisable,
+  onClose
+}) {
+  const [mode, setMode] = useState(syncEnabled ? "active" : "choose");
+  const [hid, setHid] = useState("");
+  const [dname, setDname] = useState(deviceName || "");
+  const newId = useRef(genHID());
+  if (mode === "active") return /*#__PURE__*/React.createElement(Modal, {
+    title: "🏠 Household Sync",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#74C69D",
+      marginBottom: 11
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 7,
+      marginBottom: 5
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 7,
+      height: 7,
+      borderRadius: "50%",
+      background: "#74C69D",
+      display: "inline-block"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#74C69D",
+      fontWeight: "bold",
+      fontSize: 12
+    }
+  }, "Live Sync Active")), /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Household Code"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      fontWeight: "bold",
+      letterSpacing: 6,
+      color: "#F0EAD6",
+      margin: "3px 0 7px",
+      fontFamily: "monospace"
+    }
+  }, householdId), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A"
+    }
+  }, "Share this code with your wife. She taps Sync → Join → enters this code."), lastSync && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: "#555",
+      marginTop: 5
+    }
+  }, "Last sync: ", new Date(lastSync).toLocaleTimeString())), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A",
+      marginBottom: 13
+    }
+  }, "Changes sync every 6 seconds. Both devices see the same budget live."), /*#__PURE__*/React.createElement("button", {
+    onClick: onDisable,
+    style: {
+      ...S.btnGhost,
+      width: "100%",
+      padding: 8,
+      fontSize: 11,
+      borderColor: "#E07A5F",
+      color: "#E07A5F"
+    }
+  }, "Disable Sync"));
+  if (mode === "choose") return /*#__PURE__*/React.createElement(Modal, {
+    title: "🏠 Household Sync",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: "#7A8B7A",
+      fontSize: 11,
+      marginBottom: 13
+    }
+  }, "Sync your budget with your wife's device so you both see the same data live — no manual sharing needed."), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMode("create"),
+    style: {
+      ...S.btnPrimary,
+      width: "100%",
+      padding: 11,
+      marginBottom: 8,
+      fontSize: 13
+    }
+  }, "🏠 Create New Household"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMode("join"),
+    style: {
+      ...S.btnGhost,
+      width: "100%",
+      padding: 11,
+      fontSize: 13
+    }
+  }, "🔗 Join Existing Household"));
+  if (mode === "create") return /*#__PURE__*/React.createElement(Modal, {
+    title: "Create Household",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: "#7A8B7A",
+      fontSize: 11,
+      marginBottom: 11
+    }
+  }, "Your household code is generated below. Share it with your wife so she can join."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      borderColor: "#74C69D",
+      textAlign: "center",
+      marginBottom: 11
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Your Code"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 28,
+      fontWeight: "bold",
+      letterSpacing: 8,
+      color: "#74C69D",
+      fontFamily: "monospace",
+      margin: "5px 0"
+    }
+  }, newId.current)), /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Your Device Name"), /*#__PURE__*/React.createElement("input", {
+    value: dname,
+    onChange: e => setDname(e.target.value),
+    style: {
+      ...S.input,
+      marginBottom: 11
+    },
+    placeholder: "e.g. Lee's Phone"
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (dname.trim()) onSetup(newId.current, dname.trim());
+    },
+    style: {
+      ...S.btnPrimary,
+      width: "100%",
+      padding: 10,
+      fontSize: 13
+    }
+  }, "Activate Sync"));
+  if (mode === "join") return /*#__PURE__*/React.createElement(Modal, {
+    title: "Join Household",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: "#7A8B7A",
+      fontSize: 11,
+      marginBottom: 11
+    }
+  }, "Enter the household code from your husband's phone."), /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Household Code"), /*#__PURE__*/React.createElement("input", {
+    value: hid,
+    onChange: e => setHid(e.target.value.toUpperCase().slice(0, 6)),
+    style: {
+      ...S.input,
+      fontSize: 20,
+      letterSpacing: 6,
+      fontFamily: "monospace",
+      textAlign: "center",
+      marginBottom: 9
+    },
+    placeholder: "ABC123"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Your Device Name"), /*#__PURE__*/React.createElement("input", {
+    value: dname,
+    onChange: e => setDname(e.target.value),
+    style: {
+      ...S.input,
+      marginBottom: 11
+    },
+    placeholder: "e.g. Wife's Phone"
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (hid.length === 6 && dname.trim()) onJoin(hid, dname.trim());
+    },
+    style: {
+      ...S.btnPrimary,
+      width: "100%",
+      padding: 10,
+      fontSize: 13
+    }
+  }, "Join & Sync"));
+  return null;
+}
+function IncomeModal({
+  income,
+  periodLabel,
+  onSave,
+  onClose
+}) {
+  const [val, setVal] = useState(income || "");
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: `Paycheck · ${periodLabel}`,
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Take-home amount"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.inputPfx
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    autoFocus: true,
+    type: "number",
+    value: val,
+    onChange: e => setVal(e.target.value),
+    onKeyDown: e => e.key === "Enter" && onSave(val),
+    style: {
+      ...S.input,
+      paddingLeft: 22
+    },
+    placeholder: "3200.00"
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: () => onSave(val),
+    style: {
+      ...S.btnPrimary,
+      marginTop: 10,
+      width: "100%"
+    }
+  }, "Save Paycheck"));
+}
+function AddTxModal({
+  categories,
+  periodLabel,
+  onAdd,
+  onClose
+}) {
+  const [fm, setFm] = useState({
+    desc: "",
+    amount: "",
+    catId: categories[0]?.id || "misc",
+    date: new Date().toISOString().slice(0, 10),
+    person: "both",
+    memo: "",
+    recurring: false,
+    splits: []
+  });
+  const [splitting, setSplitting] = useState(false);
+  const [splits, setSplits] = useState([{
+    catId: categories[0]?.id || "misc",
+    amount: "",
+    label: ""
+  }]);
+  const u = (k, v) => setFm(p => ({
+    ...p,
+    [k]: v
+  }));
+  const submit = () => {
+    if (!fm.desc.trim() || !fm.amount) return;
+    const tx = {
+      ...fm,
+      amount: parseFloat(fm.amount)
+    };
+    if (splitting && splits.filter(s => s.amount).length > 0) tx.splits = splits.filter(s => s.amount).map(s => ({
+      ...s,
+      amount: parseFloat(s.amount)
+    }));
+    onAdd(tx);
+  };
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: `Log Transaction · ${periodLabel}`,
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Description"), /*#__PURE__*/React.createElement("input", {
+    value: fm.desc,
+    onChange: e => u("desc", e.target.value),
+    style: S.input,
+    placeholder: "e.g. Target run"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 6,
+      marginTop: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Amount"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.inputPfx
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: fm.amount,
+    onChange: e => u("amount", e.target.value),
+    style: {
+      ...S.input,
+      paddingLeft: 22
+    }
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Date"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: fm.date,
+    onChange: e => u("date", e.target.value),
+    style: S.input
+  }))), !splitting && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Category"), /*#__PURE__*/React.createElement("select", {
+    value: fm.catId,
+    onChange: e => u("catId", e.target.value),
+    style: S.input
+  }, GROUPS.map(g => /*#__PURE__*/React.createElement("optgroup", {
+    key: g,
+    label: `── ${g} ──`
+  }, categories.filter(c => c.group === g).map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.icon, " ", c.label)))))), splitting && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Split Transaction"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      color: Math.abs(splits.reduce((a, s) => a + (parseFloat(s.amount) || 0), 0) - (parseFloat(fm.amount) || 0)) < 0.01 ? "#74C69D" : "#E07A5F"
+    }
+  }, fmtDec(splits.reduce((a, s) => a + (parseFloat(s.amount) || 0), 0)), " / ", fmtDec(parseFloat(fm.amount) || 0))), splits.map((sp, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 75px 95px 20px",
+      gap: 4,
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: sp.label,
+    onChange: e => setSplits(p => p.map((s, j) => j === i ? {
+      ...s,
+      label: e.target.value
+    } : s)),
+    style: S.inlineInput,
+    placeholder: "Label"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.inputPfx
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: sp.amount,
+    onChange: e => setSplits(p => p.map((s, j) => j === i ? {
+      ...s,
+      amount: e.target.value
+    } : s)),
+    style: {
+      ...S.inlineInput,
+      paddingLeft: 16,
+      width: "100%"
+    }
+  })), /*#__PURE__*/React.createElement("select", {
+    value: sp.catId,
+    onChange: e => setSplits(p => p.map((s, j) => j === i ? {
+      ...s,
+      catId: e.target.value
+    } : s)),
+    style: S.inlineInput
+  }, categories.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.icon, " ", c.label))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSplits(p => p.filter((_, j) => j !== i)),
+    style: {
+      ...S.iconBtn,
+      fontSize: 11
+    }
+  }, "✕"))), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSplits(p => [...p, {
+      catId: categories[0]?.id,
+      amount: "",
+      label: ""
+    }]),
+    style: {
+      ...S.btnGhost,
+      width: "100%",
+      padding: 5,
+      fontSize: 10,
+      marginTop: 2
+    }
+  }, "＋ Add Split")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Who spent it?"), /*#__PURE__*/React.createElement("select", {
+    value: fm.person,
+    onChange: e => u("person", e.target.value),
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "both"
+  }, "👥 Joint / Both"), /*#__PURE__*/React.createElement("option", {
+    value: "me"
+  }, "🙋 Me"), /*#__PURE__*/React.createElement("option", {
+    value: "spouse"
+  }, "💑 Spouse"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Memo (optional)"), /*#__PURE__*/React.createElement("input", {
+    value: fm.memo,
+    onChange: e => u("memo", e.target.value),
+    style: S.input,
+    placeholder: "Optional note..."
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 11,
+      marginTop: 8,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 5,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: fm.recurring,
+    onChange: e => u("recurring", e.target.checked),
+    style: {
+      accentColor: "#74C69D"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A"
+    }
+  }, "🔁 Recurring")), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 5,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: splitting,
+    onChange: e => setSplitting(e.target.checked),
+    style: {
+      accentColor: "#74C69D"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#7A8B7A"
+    }
+  }, "🏷️ Split"))), /*#__PURE__*/React.createElement("button", {
+    onClick: submit,
+    style: {
+      ...S.btnPrimary,
+      marginTop: 10,
+      width: "100%"
+    }
+  }, "Add Transaction"));
+}
+function AddCatModal({
+  onAdd,
+  onClose
+}) {
+  const [label, setLabel] = useState(""),
+    [ic, setIc] = useState("📌"),
+    [group, setGroup] = useState("Living");
+  const QI = ["📌", "🏋️", "✈️", "🐾", "🎮", "📚", "🍕", "🎵", "🏕️", "💊", "🎓", "🧹", "🔧", "🌱", "💻", "🎁", "🍼", "🐕", "⛪", "🏊", "🎭", "🍷", "☕"];
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "Add Category",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 3,
+      marginBottom: 8
+    }
+  }, QI.map(i => /*#__PURE__*/React.createElement("button", {
+    key: i,
+    onClick: () => setIc(i),
+    style: {
+      fontSize: 15,
+      padding: "3px",
+      border: `2px solid ${i === ic ? "#74C69D" : "#1E3028"}`,
+      borderRadius: 5,
+      background: "#141F2A",
+      cursor: "pointer"
+    }
+  }, i)), /*#__PURE__*/React.createElement("input", {
+    value: ic,
+    onChange: e => setIc(e.target.value),
+    style: {
+      ...S.input,
+      width: 38,
+      textAlign: "center",
+      padding: "2px"
+    },
+    maxLength: 2
+  })), /*#__PURE__*/React.createElement("div", {
+    style: S.microLabel
+  }, "Name"), /*#__PURE__*/React.createElement("input", {
+    value: label,
+    onChange: e => setLabel(e.target.value),
+    style: S.input,
+    placeholder: "e.g. Date Night"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.microLabel,
+      marginTop: 7
+    }
+  }, "Group"), /*#__PURE__*/React.createElement("select", {
+    value: group,
+    onChange: e => setGroup(e.target.value),
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", null, "Bills"), /*#__PURE__*/React.createElement("option", null, "Living"), /*#__PURE__*/React.createElement("option", null, "Goals")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (label.trim()) onAdd(label.trim(), ic, group);
+    },
+    style: {
+      ...S.btnPrimary,
+      marginTop: 10,
+      width: "100%"
+    }
+  }, "Add Category"));
+}
+function AddRecurringModal({
+  categories,
+  recurringBills,
+  onSave,
+  onClose
+}) {
+  const [list, setList] = useState([...recurringBills]);
+  const [fm, setFm] = useState({
+    catId: categories[0]?.id || "misc",
+    amount: "",
+    period: 0
+  });
+  const add = () => {
+    if (!fm.amount) return;
+    setList(p => [...p.filter(r => !(r.catId === fm.catId && r.period === Number(fm.period))), {
+      id: "rec_" + Date.now(),
+      catId: fm.catId,
+      amount: parseFloat(fm.amount),
+      period: Number(fm.period)
+    }]);
+    setFm(p => ({
+      ...p,
+      amount: ""
+    }));
+  };
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "🔁 Recurring Bills",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: "#7A8B7A",
+      fontSize: 10,
+      marginBottom: 8
+    }
+  }, "Auto-fill allocations when a paycheck is entered."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 70px 70px",
+      gap: 5,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    value: fm.catId,
+    onChange: e => setFm(p => ({
+      ...p,
+      catId: e.target.value
+    })),
+    style: S.input
+  }, categories.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.id
+  }, c.icon, " ", c.label))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.inputPfx
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: fm.amount,
+    onChange: e => setFm(p => ({
+      ...p,
+      amount: e.target.value
+    })),
+    style: {
+      ...S.input,
+      paddingLeft: 18
+    },
+    placeholder: "Amt"
+  })), /*#__PURE__*/React.createElement("select", {
+    value: fm.period,
+    onChange: e => setFm(p => ({
+      ...p,
+      period: e.target.value
+    })),
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", {
+    value: 0
+  }, "Both"), /*#__PURE__*/React.createElement("option", {
+    value: 1
+  }, "1–15"), /*#__PURE__*/React.createElement("option", {
+    value: 2
+  }, "16–End"))), /*#__PURE__*/React.createElement("button", {
+    onClick: add,
+    style: {
+      ...S.btnPrimary,
+      width: "100%",
+      padding: 7,
+      fontSize: 11,
+      marginBottom: 10
+    }
+  }, "＋ Add"), list.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#555",
+      textAlign: "center",
+      fontSize: 11,
+      padding: 5
+    }
+  }, "None yet.") : list.map(r => {
+    const cat = categories.find(c => c.id === r.catId) || {
+      label: r.catId,
+      icon: "📦"
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      key: r.id,
+      style: {
+        ...S.summaryRow,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11
+      }
+    }, cat.icon, " ", cat.label), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        color: "#7A8B7A",
+        marginLeft: 6
+      }
+    }, r.period === 0 ? "Both" : r.period === 1 ? "1–15" : "16–End")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#E8E0D0",
+        fontWeight: "bold",
+        fontSize: 11
+      }
+    }, fmtDec(r.amount)), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setList(p => p.filter(x => x.id !== r.id)),
+      style: S.iconBtn
+    }, "🗑")));
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => onSave(list),
+    style: {
+      ...S.btnPrimary,
+      width: "100%",
+      marginTop: 8,
+      padding: 9
+    }
+  }, "Save"));
+}
+function Modal({
+  title,
+  onClose,
+  children
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: S.overlay,
+    onClick: e => {
+      if (e.target === e.currentTarget) onClose();
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.modalBox
+  }, /*#__PURE__*/React.createElement("div", {
+    style: S.modalHeader
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: "bold",
+      fontSize: 13
+    }
+  }, title), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    style: S.closeBtn
+  }, "✕")), children));
+}
+function StatCard({
+  label,
+  value,
+  color
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: S.statCard
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: "bold",
+      color
+    }
+  }, value), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 8,
+      color: "#7A8B7A",
+      marginTop: 2
+    }
+  }, label));
+}
+function EmptyState({
+  icon,
+  msg
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#555",
+      padding: "32px 0"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 34
+    }
+  }, icon), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      fontSize: 11
+    }
+  }, msg));
+}
+function Toast({
+  msg,
+  type
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      top: 62,
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: type === "err" ? "#B5451B" : "#2D6A4F",
+      color: "#fff",
+      padding: "7px 18px",
+      borderRadius: 7,
+      zIndex: 300,
+      fontSize: 11,
+      boxShadow: "0 4px 20px rgba(0,0,0,.5)",
+      whiteSpace: "nowrap"
+    }
+  }, msg);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+</script>
+</body>
+</html>
