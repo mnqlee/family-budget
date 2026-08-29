@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1E4033">
+<meta name="color-scheme" content="light only">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Home Base — Family Budget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js" crossorigin="anonymous"></script>
+<style>
+:root{
+  color-scheme:light only;
+  --ink:#16211B; --ink2:#41504A; --ink3:#6B7A73;
+  --paper:#F3F5F1; --card:#FFFFFF; --line:#DDE3DC;
+  --green:#1E4033; --green2:#2C5C49; --green3:#0F2A20;
+  --brass:#A9861F; --brass2:#E4C65B; --brassbg:#F6EECF;
+  --red:#B3402F; --redbg:#F9ECE9;
+  --amber:#B4720E; --amberbg:#FBF1E0;
+  --teal:#2E7D8C; --plum:#7C4B73;
+  --r:14px; --nav:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:16px;background:#F3F5F1}
+body{font-family:'Public Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);
+  padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom));min-height:100vh}
+h1,h2,h3,.disp{font-family:'Zilla Slab',serif}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--ink)}
+:focus-visible{outline:3px solid var(--brass2);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- header + zero beam ---------- */
+header{background:var(--green);color:#EDF3EE;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30}
+header .brand{font-family:'Zilla Slab',serif;font-weight:700;font-size:1.15rem;letter-spacing:.02em}
+header .brand small{display:block;font-family:'Public Sans';font-weight:500;font-size:.62rem;
+  letter-spacing:.14em;text-transform:uppercase;color:#9FB8A9}
+header .spacer{flex:1}
+.chip{background:var(--green3);border:1px solid #3A6B55;border-radius:99px;padding:5px 11px;
+  font-size:.72rem;font-weight:600;letter-spacing:.06em;display:flex;align-items:center;gap:7px;color:#CFE0D3}
+.dot{width:8px;height:8px;border-radius:50%;background:#8b8b8b;flex:none}
+.dot.on{background:#5FCB8A;box-shadow:0 0 6px #5FCB8A}
+.dot.off{background:#D77}
+
+.zerobeam{background:var(--green3);color:#D8C77A;padding:10px 16px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  cursor:pointer;position:sticky;top:0;z-index:29;border-bottom:2px solid transparent}
+.zerobeam .lbl{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:#93A99B}
+.zerobeam .val{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.05rem}
+.zerobeam .beam{flex:1;height:3px;border-radius:2px;background:#33544A;position:relative;overflow:hidden}
+.zerobeam .beam i{position:absolute;inset:0;background:var(--brass2);transform-origin:left;transition:transform .5s}
+.zerobeam.zero{color:var(--brass2);border-bottom-color:var(--brass2)}
+.zerobeam.pos{color:#F0C877}
+.zerobeam.neg{color:#F4A093}
+.zerobeam.neg .beam i{background:#E06A57}
+
+/* ---------- layout ---------- */
+main{max-width:640px;margin:0 auto;padding:16px 14px 24px}
+.view{display:none}.view.on{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.card h2{font-size:1.05rem;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card h2 .act{margin-left:auto;font-family:'Public Sans';font-size:.72rem;font-weight:700;color:var(--green2);
+  letter-spacing:.06em;text-transform:uppercase}
+.eyebrow{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px}
+.big{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.7rem;letter-spacing:-.02em}
+.row{display:flex;align-items:center;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid2>*{min-width:0}
+.muted{color:var(--ink3);font-size:.82rem}
+.pos-t{color:var(--green2)}.neg-t{color:var(--red)}.amber-t{color:var(--amber)}
+
+/* ---------- envelope rows ---------- */
+.env{padding:11px 0;border-bottom:1px solid var(--line)}
+.env:last-child{border-bottom:0}
+.env .top{display:flex;align-items:baseline;gap:8px}
+.env .name{font-weight:600;font-size:.94rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.env .amt{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:.94rem}
+.env .sub{display:flex;justify-content:space-between;font-size:.72rem;color:var(--ink3);margin-top:2px}
+.bar{height:6px;border-radius:3px;background:#E7ECE6;margin-top:7px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--green2);transition:width .4s}
+.bar i.warn{background:var(--amber)}.bar i.over{background:var(--red)}
+.bar i.goal{background:var(--brass)}
+
+/* ---------- lists ---------- */
+.tx{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.tx:last-child{border-bottom:0}
+.tx .who{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:.8rem;color:#fff;flex:none}
+.tx .mid{flex:1;min-width:0}
+.tx .p{font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx .s{font-size:.72rem;color:var(--ink3)}
+.tx .a{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:.92rem}
+.empty{padding:22px 8px;text-align:center;color:var(--ink3);font-size:.86rem}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#fff;
+  font-weight:700;font-size:.9rem;padding:13px 18px;border-radius:12px;width:100%;letter-spacing:.02em}
+.btn:active{transform:scale(.98)}
+.btn.sec{background:#E9EEE8;color:var(--green3)}
+.btn.brass{background:var(--brass);color:#fff}
+.btn.ghost{background:none;border:1.5px solid var(--line);color:var(--ink2)}
+.btn.sm{width:auto;padding:8px 13px;font-size:.78rem;border-radius:9px}
+.btn.danger{background:var(--redbg);color:var(--red)}
+.iconb{width:38px;height:38px;border-radius:10px;background:#E9EEE8;color:var(--green3);display:flex;
+  align-items:center;justify-content:center;font-size:1.05rem;flex:none}
+
+/* ---------- forms ---------- */
+label.f{display:block;margin-bottom:12px}
+label.f span{display:block;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:5px}
+.in{width:100%;min-width:0;background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:12px 13px;font-size:.95rem}
+input[type=date].in,input[type=month].in{min-height:47px;-webkit-appearance:none;appearance:none}
+.in:focus{border-color:var(--green2);outline:none}
+.amountin{font-family:'IBM Plex Mono',monospace;font-size:1.9rem;font-weight:600;text-align:center;
+  border:0;border-bottom:2.5px solid var(--line);border-radius:0;background:none;width:100%;padding:8px 4px}
+.amountin:focus{border-color:var(--brass);outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chips .c{border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:7px 13px;font-size:.8rem;font-weight:600;color:var(--ink2)}
+.chips .c.on{background:var(--green);border-color:var(--green);color:#fff}
+.seg{display:flex;background:#E9EEE8;border-radius:11px;padding:3px;margin-bottom:14px}
+.seg button{flex:1;padding:9px;border-radius:8px;font-weight:700;font-size:.8rem;color:var(--ink3)}
+.seg button.on{background:#fff;color:var(--green3);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+/* ---------- bottom nav ---------- */
+nav.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--green);display:flex;z-index:40;
+  padding-bottom:env(safe-area-inset-bottom);height:calc(var(--nav) + env(safe-area-inset-bottom))}
+nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:#8FA898;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+nav.tabs button .ic{font-size:1.25rem;line-height:1}
+nav.tabs button.on{color:var(--brass2)}
+nav.tabs .fabwrap{flex:1;position:relative}
+.fab{position:absolute;left:50%;top:-20px;transform:translateX(-50%);width:58px;height:58px;border-radius:50%;
+  background:var(--brass);color:#fff;font-size:1.9rem;font-weight:400;display:flex;align-items:center;
+  justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.35);border:3px solid var(--paper)}
+.fab:active{transform:translateX(-50%) scale(.94)}
+
+/* ---------- sheets & modals ---------- */
+.sheet{position:fixed;inset:0;z-index:50;display:none}
+.sheet.on{display:block}
+.sheet .bg{position:absolute;inset:0;background:rgba(15,30,23,.55)}
+.sheet .panel{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-radius:20px 20px 0 0;
+  max-height:92vh;overflow-y:auto;padding:10px 18px calc(24px + env(safe-area-inset-bottom));
+  animation:up .22s ease;max-width:640px;margin:0 auto}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:6px auto 14px}
+.sheet h3{font-size:1.15rem;margin-bottom:14px}
+.sheet .close{position:absolute;right:14px;top:16px;font-size:1.3rem;color:var(--ink3);width:36px;height:36px}
+
+/* ---------- misc ---------- */
+.pilrow{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.pilrow::-webkit-scrollbar{display:none}
+.statc{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px}
+.morec{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:15px;margin-bottom:10px;width:100%;text-align:left}
+.morec .t{font-weight:700;font-size:.95rem}
+.morec .d{font-size:.76rem;color:var(--ink3)}
+.morec .arr{margin-left:auto;color:var(--ink3)}
+.perbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.perbar b{font-family:'Zilla Slab',serif;font-size:1rem;background:var(--card);border:1px solid var(--line);padding:8px 16px;border-radius:99px;color:var(--ink)}
+.perbar button{width:36px;height:36px;border-radius:10px;background:#E9EEE8;color:var(--green3);font-size:1rem;font-weight:700}
+canvas{width:100%;height:auto;display:block}
+.notice{background:var(--amberbg);border:1px solid #E8D3A8;color:#6d4a10;border-radius:11px;padding:11px 13px;
+  font-size:.8rem;margin-bottom:12px}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav) + 22px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 18px;border-radius:11px;font-size:.84rem;font-weight:600;z-index:70;
+  opacity:0;pointer-events:none;transition:opacity .25s;max-width:88vw;text-align:center}
+.toast.on{opacity:1}
+.wizlogo{text-align:center;margin:26px 0 6px}
+.wizlogo .mark{font-family:'Zilla Slab',serif;font-weight:700;font-size:1.9rem;color:var(--green3)}
+.wizlogo .sub{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);font-weight:700}
+.kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.kv:last-child{border-bottom:0}
+.kv b{font-family:'IBM Plex Mono',monospace;font-weight:600}
+del,s{color:var(--ink3)}
+/* Command Brief home */
+.hometop{background:var(--green);color:#EDF3EE;margin:-16px -14px 14px;padding:16px 16px 15px}
+.hometop .hello{font-family:'Zilla Slab',serif;font-size:1.3rem;font-weight:600}
+.hometop .hsub{font-size:.64rem;color:#9FB8A9;letter-spacing:.08em;text-transform:uppercase;margin-top:3px;font-weight:700}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tile{background:var(--card);border:1px solid var(--line);border-left-width:4px;border-radius:16px;padding:13px 14px}
+.tile .st{font-size:.68rem;font-weight:700;margin-top:1px}
+.tile.ok{border-left-color:var(--green2)}.tile.ok .st{color:var(--green2)}
+.tile.warn{border-left-color:var(--amber)}.tile.warn .st{color:var(--amber)}
+.tile.over{border-left-color:var(--red)}.tile.over .st{color:var(--red)}
+.gtoday{background:var(--green);color:#EDF3EE;border:0;cursor:pointer}
+.gtoday .trow{display:flex;justify-content:space-between;gap:10px;font-size:.84rem;padding:7px 0;border-bottom:1px solid #2C5C49}
+.gtoday .trow:last-child{border-bottom:0}
+.gtoday .trow b{font-family:'IBM Plex Mono',monospace;font-weight:600;white-space:nowrap}
+.gtoday .eyebrow{color:#9FB8A9;display:flex;justify-content:space-between}
+ol.help,ul.help{margin:4px 0 0;padding-left:22px}
+ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
+.code{background:var(--green3);color:#CFE0D3;font-family:'IBM Plex Mono',monospace;font-size:.78rem;
+  padding:13px 14px;border-radius:11px;overflow-x:auto;white-space:pre;margin:4px 0 10px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Home Base<small>Family money HQ</small></div>
+  <div class="spacer"></div>
+  <button class="chip" id="hhChip" onclick="openSheet('shSettings')"><span class="dot" id="syncDot"></span><span id="hhCode">SETUP</span></button>
+</header>
+
+<button class="zerobeam" id="zerobeam" onclick="go('env')">
+  <span><span class="lbl">To assign</span><br><span class="val" id="zbVal">$0.00</span></span>
+  <span class="beam"><i id="zbBar"></i></span>
+  <span class="lbl" id="zbState">this period</span>
+</button>
+
+<main>
+  <!-- ============ HOME ============ -->
+  <section class="view" id="v-home">
+    <div class="hometop"><div class="hello" id="hHello"></div><div class="hsub" id="hSub"></div></div>
+    <div class="tiles" id="hTiles"></div>
+    <div class="card gtoday" id="hTodayCard" style="display:none" onclick="go('bills')">
+      <div class="eyebrow" style="margin-bottom:6px"><span id="hTodayLbl">Today &amp; next</span><span>All bills ›</span></div>
+      <div id="hToday"></div>
+    </div>
+    <div class="card">
+      <h2>✉️ Envelopes <button class="act" onclick="go('env')">Manage</button></h2>
+      <div id="hEnv"></div>
+    </div>
+    <div class="card">
+      <h2>🧾 Recent activity <button class="act" onclick="openSheet('shAllTx');renderAllTx()">See all</button></h2>
+      <div id="hTx"></div>
+    </div>
+  </section>
+
+  <!-- ============ ENVELOPES ============ -->
+  <section class="view" id="v-env">
+    <div class="perbar">
+      <button onclick="shiftPeriod(-1)">‹</button>
+      <b id="envPeriodLbl"></b>
+      <button onclick="shiftPeriod(1)">›</button>
+    </div>
+    <div class="card">
+      <div class="kv"><span>Expected income</span><b id="envInc"></b></div>
+      <div class="kv"><span>Assigned to envelopes</span><b id="envAlloc"></b></div>
+      <div class="kv"><span id="envLeftLbl">Left to assign</span><b id="envLeft"></b></div>
+    </div>
+    <div class="row" style="margin-bottom:12px;gap:8px">
+      <button class="btn sec sm" style="flex:1" onclick="copyPrevBudget()">⤺ Copy last period</button>
+      <button class="btn sec sm" style="flex:1" onclick="openMove()">⇄ Move money</button>
+      <button class="btn brass sm" style="flex:1" onclick="openEnvForm()">＋ Envelope</button>
+    </div>
+    <div class="card"><h2>Spending envelopes</h2><div id="envList"></div></div>
+    <div class="card"><h2>🎯 Goals &amp; sinking funds</h2><div id="envGoalList"></div></div>
+  </section>
+
+  <!-- ============ BILLS ============ -->
+  <section class="view" id="v-bills">
+    <div class="card">
+      <h2>📬 Monthly bills <button class="act" onclick="openBillForm()">＋ Add</button></h2>
+      <div class="muted" style="margin-bottom:8px" id="billTotals"></div>
+      <div id="billList"></div>
+    </div>
+  </section>
+
+  <!-- ============ MORE ============ -->
+  <section class="view" id="v-more">
+    <button class="morec" onclick="go('road')"><span class="iconb">🧭</span><span><span class="t">Financial roadmap</span><br><span class="d">Your milestones from starter fund to retirement</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('trans')"><span class="iconb">🎖️</span><span><span class="t">Transition runway</span><br><span class="d">Bridge the gap from active duty to what's next</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('cal')"><span class="iconb">🗓️</span><span><span class="t">Cashflow calendar</span><br><span class="d">See every payday and bill across the month</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('kids')"><span class="iconb">🧒</span><span><span class="t">Kids &amp; allowance</span><br><span class="d">Spend · Save · Give jars for each child</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('give')"><span class="iconb">🤲</span><span><span class="t">Giving &amp; tithe</span><br><span class="d">Track giving, stay on your target</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('goals')"><span class="iconb">🎯</span><span><span class="t">Goals &amp; yearly expenses</span><br><span class="d">Sinking funds + the annual-hit planner, together</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('debts')"><span class="iconb">⚔️</span><span><span class="t">Debt payoff</span><br><span class="d">Snowball or avalanche, with a payoff date</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('tank')"><span class="iconb">📈</span><span><span class="t">Trading income tank</span><br><span class="d">Hold variable income until it's cleared &amp; swept</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('worth')"><span class="iconb">🏛️</span><span><span class="t">Net worth</span><br><span class="d">Accounts, assets &amp; the long game</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('subs')"><span class="iconb">🔁</span><span><span class="t">Subscription audit</span><br><span class="d">What's quietly draining you every month</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('vault')"><span class="iconb">🛡️</span><span><span class="t">Readiness vault</span><br><span class="d">SGLI, SBP, will, POA — the things your family needs findable</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('reports')"><span class="iconb">📊</span><span><span class="t">Reports</span><br><span class="d">Where the money actually went</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="openSheet('shSettings')"><span class="iconb">⚙️</span><span><span class="t">Settings &amp; household</span><br><span class="d">Income, members, sync, backup</span></span><span class="arr">›</span></button>
+    <button class="morec" onclick="go('help')"><span class="iconb">📖</span><span><span class="t">Setup &amp; help guide</span><br><span class="d">Deploy updates, connect Firebase, add your spouse</span></span><span class="arr">›</span></button>
+  </section>
+
+  <!-- ============ GOALS ============ -->
+  <section class="view" id="v-goals">
+    <div class="card">
+      <h2>📅 Yearly &amp; irregular expenses <button class="act" onclick="openAnnualForm()">＋ Add</button></h2>
+      <div class="kv"><span>Total per year</span><b id="annTotal"></b></div>
+      <div class="kv"><span>Set aside per paycheck (all combined)</span><b id="annPerPay"></b></div>
+      <div id="annList" style="margin-top:8px"></div>
+    </div>
+  
+    <div class="card"><h2>🎯 Goals <button class="act" onclick="openEnvForm(null,'goal')">＋ Add goal</button></h2><div id="goalList"></div></div>
+  </section>
+
+  <!-- ============ DEBTS ============ -->
+  <section class="view" id="v-debts">
+    <div class="card">
+      <h2>⚔️ Debt payoff <button class="act" onclick="openDebtForm()">＋ Add</button></h2>
+      <div class="seg" id="debtSeg">
+        <button data-m="snowball" onclick="setDebtMethod('snowball')">Snowball</button>
+        <button data-m="avalanche" onclick="setDebtMethod('avalanche')">Avalanche</button>
+      </div>
+      <label class="f"><span>Extra toward debt / month</span><input class="in mono" id="extraDebt" inputmode="decimal" onchange="saveExtraDebt(this.value)"></label>
+      <div id="debtSummary"></div>
+      <div id="debtList"></div>
+    </div>
+  </section>
+
+  <!-- ============ NET WORTH ============ -->
+  <section class="view" id="v-worth">
+    <div class="card">
+      <h2>🏛️ Net worth <button class="act" onclick="openAcctForm()">＋ Account</button></h2>
+      <div class="big" id="nwTotal">$0</div>
+      <div class="muted" id="nwSub"></div>
+      <div style="margin-top:12px"><canvas id="nwChart" height="150"></canvas></div>
+      <button class="btn sec sm" style="margin-top:10px" onclick="snapshotNW()">📸 Save snapshot</button>
+      <button class="btn brass sm" style="margin-top:10px;margin-left:8px" onclick="openUpd()">🔄 Update balances</button>
+    </div>
+    <div class="card" id="nwGoalCard">
+      <h2>🎯 Net worth goal <button class="act" onclick="openNWGoal()">Set</button></h2>
+      <div id="nwGoalBody"></div>
+    </div>
+    <div class="card"><h2>By category</h2><div id="nwCats"></div></div>
+    <div class="card"><h2>Assets</h2><div id="assetList"></div></div>
+    <div class="card"><h2>Liabilities</h2><div id="liabList"></div></div>
+  </section>
+
+  <!-- ============ REPORTS ============ -->
+  <section class="view" id="v-reports">
+    <div class="card"><h2>📊 Income vs spending — 6 months</h2><canvas id="repFlow" height="170"></canvas></div>
+    <div class="card"><h2>This month by envelope</h2><div id="repEnv"></div></div>
+    <div class="card"><h2>Who spent it — this month</h2><div id="repWho"></div></div>
+  </section>
+
+  <!-- ============ ROADMAP ============ -->
+  <section class="view" id="v-road">
+    <div class="card" style="background:var(--green);color:#EDF3EE;border:0">
+      <div class="eyebrow" style="color:#9FB8A9">Your next move</div>
+      <div class="disp" id="roadNext" style="font-size:1.25rem;font-weight:600;margin:2px 0 4px"></div>
+      <div class="muted" id="roadNextSub" style="color:#CFE0D3"></div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Emergency runway</div>
+      <div class="row" style="align-items:baseline;gap:8px"><div class="big" id="roadRunway">—</div><div class="muted" id="roadRunwaySub"></div></div>
+      <div class="bar" style="margin-top:8px"><i id="roadRunwayBar"></i></div>
+      <div class="row" style="gap:8px;margin-top:12px">
+        <button class="btn sec sm" style="flex:1" onclick="pickEmergency()">Set emergency fund</button>
+        <button class="btn sec sm" style="flex:1" onclick="editMonthly()">Monthly need: <b id="roadMonthlyBtn">—</b></button>
+      </div>
+    </div>
+    <div class="card"><h2>🧭 Milestones</h2><div id="roadSteps"></div>
+      <div class="muted" style="margin-top:8px">Steps marked "auto" complete themselves from your real numbers — tapping one takes you where the work happens. Steps 5–7 you check off yourself.</div>
+    </div>
+  </section>
+
+  <!-- ============ KIDS ============ -->
+  <section class="view" id="v-kids">
+    <div class="card">
+      <h2>🧒 Kids &amp; allowance <button class="act" onclick="openKidForm()">＋ Add child</button></h2>
+      <div class="muted" id="kidsIntro" style="margin-bottom:6px"></div>
+      <div id="kidList"></div>
+    </div>
+  </section>
+
+  <!-- ============ GIVING ============ -->
+  <section class="view" id="v-give">
+    <div class="card" style="background:var(--brass);color:#fff;border:0">
+      <div class="eyebrow" style="color:#fbe7bd">Given this year</div>
+      <div class="big" id="giveYTD">$0</div>
+      <div class="muted" id="giveYTDsub" style="color:#fbe7bd"></div>
+    </div>
+    <div class="card">
+      <div class="kv"><span>Target per paycheck</span><b id="giveTarget"></b></div>
+      <div class="kv"><span>Given this period</span><b id="giveThis"></b></div>
+      <div class="kv"><span>Giving envelope available</span><b id="giveAvail"></b></div>
+      <label class="f" style="margin-top:12px"><span>Giving target (% of income)</span>
+        <input class="in mono" id="givePct" inputmode="decimal" onchange="saveGivePct(this.value)"></label>
+      <button class="btn brass" onclick="openGift()">🤲 Log a gift</button>
+    </div>
+    <div class="card"><h2>Recent giving</h2><div id="giveLog"></div></div>
+  </section>
+
+  <!-- ============ TRANSITION RUNWAY ============ -->
+  <section class="view" id="v-trans">
+    <div class="card" style="background:var(--green3);color:#EDF3EE;border:0">
+      <div class="eyebrow" style="color:#9FB8A9">Countdown to retirement</div>
+      <div class="disp" id="transCount" style="font-size:1.5rem;font-weight:700"></div>
+      <div class="muted" id="transDateSub" style="color:#CFE0D3"></div>
+    </div>
+    <div class="card">
+      <div class="grid2">
+        <label class="f"><span>Target retirement date</span><input class="in" type="month" id="trDate" onchange="saveTrans()"></label>
+        <label class="f"><span>Cushion (months of expenses)</span><select class="in" id="trMonths" onchange="saveTrans()"><option>3</option><option>6</option><option>9</option><option>12</option></select></label>
+      </div>
+      <label class="f"><span>Expected monthly income after retirement (pension, VA, etc.)</span><input class="in mono" id="trIncome" inputmode="decimal" onchange="saveTrans()"></label>
+      <label class="f"><span>Runway fund goal</span><select class="in" id="trEnv" onchange="saveTrans()"></select></label>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Runway fund</div>
+      <div class="row" style="align-items:baseline;gap:8px"><div class="big" id="trSaved">$0</div><div class="muted" id="trTargetSub"></div></div>
+      <div class="bar" style="margin-top:8px"><i id="trBar"></i></div>
+      <div class="kv" style="margin-top:12px"><span>Save per paycheck to hit it in time</span><b id="trPerPay"></b></div>
+      <div class="kv"><span>Monthly gap your income leaves</span><b id="trGap"></b></div>
+      <div class="muted" id="trGapNote" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <!-- ============ CASHFLOW CALENDAR ============ -->
+  <section class="view" id="v-cal">
+    <div class="perbar">
+      <button onclick="shiftCal(-1)">‹</button><b id="calLbl"></b><button onclick="shiftCal(1)">›</button>
+    </div>
+    <div class="card" style="padding:12px 10px">
+      <div id="calGrid"></div>
+      <div class="row" style="justify-content:center;gap:12px;margin-top:12px;font-size:.68rem;color:var(--ink3);flex-wrap:wrap">
+        <span>🟢 Payday</span><span>🔴 Bill due</span><span>• Spending</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#A9861F"></span> Your note</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#D1618F"></span> Spouse note</span>
+      </div>
+    </div>
+    <div class="card" id="calDetail" style="display:none"><h2 id="calDetailLbl"></h2><div id="calDetailBody"></div></div>
+  </section>
+
+  <!-- ============ SUBSCRIPTIONS ============ -->
+  <section class="view" id="v-subs">
+    <div class="card" style="background:var(--plum);color:#fff;border:0">
+      <div class="eyebrow" style="color:#e6cfe0">Recurring drain</div>
+      <div class="big" id="subMo">$0</div>
+      <div class="muted" id="subYr" style="color:#e6cfe0"></div>
+    </div>
+    <div class="notice">Mark any bill as a subscription in its edit screen and it shows up here with its true yearly cost. Cancel one $15/mo you forgot about and that's $180 back a year.</div>
+    <div class="card"><h2>🔁 Your subscriptions</h2><div id="subList"></div></div>
+  </section>
+
+  <!-- ============ READINESS VAULT ============ -->
+  <section class="view" id="v-vault">
+    <div class="notice">This is the "if something happens to me" list. No account numbers or passwords here — just what exists, where it lives, and when it was last reviewed.</div>
+    <div class="card"><h2>🛡️ Readiness items <button class="act" onclick="openVaultForm()">＋ Add</button></h2><div id="vaultList"></div></div>
+    <div class="card"><h2>Suggested for a military family</h2><div class="chips" id="vaultSuggest"></div></div>
+  </section>
+
+  
+  <!-- ============ TRADING TANK ============ -->
+  <section class="view" id="v-tank">
+    <div class="card" style="background:var(--green3);color:#EDF3EE;border:0">
+      <div class="eyebrow" style="color:#9FB8A9">In the tank</div>
+      <div class="big" id="tankBal">$0</div>
+      <div class="muted" id="tankSub" style="color:#CFE0D3"></div>
+    </div>
+    <div class="notice">Trading income doesn't touch the family budget until it's <b>withdrawn to the bank and cleared</b>. Deposit it here first, then sweep it in on payday like a paycheck. Unsteady income stays out of steady math.</div>
+    <div class="row" style="gap:8px;margin-bottom:14px">
+      <button class="btn sec" style="flex:1" onclick="openTank('in')">＋ Deposit</button>
+      <button class="btn brass" style="flex:1" onclick="openTank('sweep')">→ Sweep to budget</button>
+    </div>
+    <div class="card"><h2>Tank history</h2><div id="tankLog"></div></div>
+  </section>
+
+  <!-- ============ SETUP & HELP ============ -->
+  <section class="view" id="v-help">
+    <div class="card">
+      <h2>📖 Setup &amp; help</h2>
+      <div class="muted">Everything you need to update the app, sync with your wife, and keep your data safe. Your household code and database URL are at the bottom.</div>
+    </div>
+
+    <div class="card">
+      <h2>⬆️ Deploy a new version</h2>
+      <ol class="help">
+        <li>Download the new <b>index.html</b> from your chat.</li>
+        <li>Open your GitHub repo → the <b>v2</b> folder (<span class="mono">family-budget/v2/</span>).</li>
+        <li>Delete the old <b>index.html</b> there, then upload the new one. <b>Commit</b> the change.</li>
+        <li>Wait about a minute for GitHub Pages to rebuild.</li>
+        <li>On your phone, fully close the tab and reopen <span class="mono">mnqlee.github.io/family-budget/v2/</span> — or pull down to hard-refresh.</li>
+      </ol>
+      <div class="notice">Your budget data is stored separately from the code, so replacing the file never wipes your numbers.</div>
+    </div>
+
+    <div class="card">
+      <h2>☁️ Connect Firebase (sync both phones)</h2>
+      <div class="eyebrow" style="margin:6px 0">Get your database URL</div>
+      <ol class="help">
+        <li>Go to <span class="mono">console.firebase.google.com</span> → open your existing project.</li>
+        <li>Left menu → <b>Build → Realtime Database</b>.</li>
+        <li>Copy the URL at the top (<span class="mono">https://…firebaseio.com</span>). No database yet? Tap <b>Create Database</b> → pick a location → <b>locked mode</b> → then copy the URL.</li>
+      </ol>
+      <div class="eyebrow" style="margin:12px 0 6px">Set the security rules</div>
+      <ol class="help">
+        <li>In Realtime Database, open the <b>Rules</b> tab.</li>
+        <li>Paste the rules below and tap <b>Publish</b>.</li>
+      </ol>
+      <pre class="code" id="rulesBlock">{
+  "rules": {
+    "hb5": {
+      "$household": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}</pre>
+      <button class="btn sec sm" onclick="copyRules()">📋 Copy rules</button>
+      <div class="muted" style="margin-top:8px">This scopes access to the app's own <span class="mono">hb5/</span> branch — your v1 app's data is untouched. The 6-digit code is the lock. Want real sign-in instead? Ask in chat.</div>
+    </div>
+
+    <div class="card">
+      <h2>🏠 Create your household</h2>
+      <ol class="help">
+        <li>Tap the <b>LOCAL / #code chip</b> at the top → <b>Leave household on this device</b> → confirm. It reloads to setup.</li>
+        <li>Choose <b>Sync with Firebase</b>.</li>
+        <li>Paste your <b>database URL</b>, enter your <b>name</b>, tap <b>Create new household</b>.</li>
+        <li>It shows a <b>6-digit code</b> — that's your family key. Save it (screenshot or readiness vault).</li>
+        <li>Now enter income, envelopes, and bills. <b>Do this on Firebase before entering real numbers</b> — local data doesn't move to the cloud.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>💑 Add your wife</h2>
+      <ol class="help">
+        <li>On <b>her</b> phone, open <span class="mono">mnqlee.github.io/family-budget/v2/</span>.</li>
+        <li>Setup screen → <b>Sync with Firebase</b>.</li>
+        <li>She pastes the <b>same database URL</b>, enters <b>her</b> name, types the <b>6-digit code</b> in the Join box, taps <b>Join</b>.</li>
+        <li>Done — anything either of you logs appears on the other phone in about a second.</li>
+        <li>Optional: on her phone, <b>Settings → Language → ES</b> for Spanish. It's per-device; yours stays English.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>🛟 Keep it safe</h2>
+      <ul class="help">
+        <li>The top-right dot is <b>green</b> when synced; grey/red means offline — writes queue and catch up automatically.</li>
+        <li><b>Settings → Export JSON backup</b> now and then. Cheap insurance.</li>
+        <li>Whoever creates the household holds the original code — don't lose those 6 digits.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>🔑 This device</h2>
+      <div id="helpInfo"></div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="tabs">
+  <button id="t-home" onclick="go('home')"><span class="ic">🏠</span>Home</button>
+  <button id="t-env" onclick="go('env')"><span class="ic">✉️</span>Budget</button>
+  <span class="fabwrap"><button class="fab" onclick="openTx()" aria-label="Add transaction">＋</button></span>
+  <button id="t-bills" onclick="go('bills')"><span class="ic">📬</span>Bills</button>
+  <button id="t-more" onclick="go('more')"><span class="ic">☰</span>More</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- ============ SHEET: ADD TRANSACTION ============ -->
+<div class="sheet" id="shTx">
+  <div class="bg" onclick="closeSheet('shTx')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shTx')">✕</button>
+    <div class="seg" id="txSeg">
+      <button data-k="exp" onclick="setTxKind('exp')">Spend</button>
+      <button data-k="inc" onclick="setTxKind('inc')">Income</button>
+    </div>
+    <input class="amountin" id="txAmt" inputmode="decimal" placeholder="$0.00" autocomplete="off">
+    <div style="text-align:center;margin:8px 0 14px">
+      <button class="btn ghost sm" onclick="scanReceipt()">📷 Scan receipt</button>
+    </div>
+    <label class="f" id="txEnvWrap"><span>Envelope</span><div class="chips" id="txEnvChips"></div></label>
+    <label class="f"><span>Payee / description</span><input class="in" id="txPayee" list="payeeList" placeholder="Commissary, gas, allowance…"><datalist id="payeeList"></datalist></label>
+    <div class="grid2">
+      <label class="f"><span>Date</span><input class="in" type="date" id="txDate"></label>
+      <label class="f"><span>Who spent it?</span><select class="in" id="txWho"></select></label>
+    </div>
+    <label class="f"><span>Note (optional)</span><input class="in" id="txNote"></label>
+    <button class="btn brass" id="txSave" onclick="saveTx()">Log it</button>
+    <div class="muted" id="scanStatus" style="text-align:center;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- ============ SHEET: ENVELOPE FORM ============ -->
+<div class="sheet" id="shEnv">
+  <div class="bg" onclick="closeSheet('shEnv')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shEnv')">✕</button>
+    <h3 id="envFormTitle">New envelope</h3>
+    <label class="f"><span>Name</span><input class="in" id="efName" placeholder="Groceries"></label>
+    <label class="f"><span>Type</span>
+      <div class="chips" id="efKind">
+        <button class="c" data-k="spend" onclick="efSetKind('spend')">Spending</button>
+        <button class="c" data-k="goal" onclick="efSetKind('goal')">Goal / sinking fund</button>
+      </div>
+    </label>
+    <div id="efGoalFields" style="display:none">
+      <div class="grid2">
+        <label class="f"><span>Target amount</span><input class="in mono" id="efTarget" inputmode="decimal"></label>
+        <label class="f"><span>Target date</span><input class="in" type="date" id="efTargetDate"></label>
+      </div>
+    </div>
+    <div class="grid2">
+      <label class="f"><span>Assign each paycheck</span><input class="in mono" id="efDef" inputmode="decimal" oninput="efConv('pay')"></label>
+      <label class="f"><span>≈ per month</span><input class="in mono" id="efDefMo" inputmode="decimal" oninput="efConv('mo')"></label>
+    </div>
+    <div class="muted" id="efWeekHint" style="margin:-6px 0 12px"></div>
+    <label class="f" id="efRollWrap"><span>Leftover money</span>
+      <div class="chips">
+        <button class="c" id="efRoll1" onclick="efSetRoll(true)">Rolls over</button>
+        <button class="c" id="efRoll0" onclick="efSetRoll(false)">Resets each period</button>
+      </div>
+    </label>
+    <button class="btn" onclick="saveEnv()">Save envelope</button>
+    <button class="btn danger" id="efDelete" style="margin-top:10px;display:none" onclick="deleteEnv()">Delete envelope</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: FUND / EDIT ALLOCATION ============ -->
+<div class="sheet" id="shFund">
+  <div class="bg" onclick="closeSheet('shFund')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shFund')">✕</button>
+    <h3 id="fundTitle">Envelope</h3>
+    <div class="card" style="margin-bottom:12px">
+      <div class="kv"><span>Assigned this period</span><b id="fundAlloc"></b></div>
+      <div class="kv"><span>Spent this period</span><b id="fundSpent"></b></div>
+      <div class="kv"><span>Available now</span><b id="fundAvail"></b></div>
+    </div>
+    <label class="f"><span>Assign for this period</span><input class="in mono" id="fundIn" inputmode="decimal"></label>
+    <div class="muted" id="fundHint" style="margin:-6px 0 12px"></div>
+    <button class="btn brass" onclick="saveFund()">Update assignment</button>
+    <button class="btn sec" style="margin-top:10px" onclick="editEnvFromFund()">✎ Edit envelope</button>
+    <h3 style="margin-top:18px">Transactions</h3>
+    <div id="fundTx"></div>
+  </div>
+</div>
+
+<!-- ============ SHEET: MOVE MONEY ============ -->
+<div class="sheet" id="shMove">
+  <div class="bg" onclick="closeSheet('shMove')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shMove')">✕</button>
+    <h3>⇄ Move money</h3>
+    <label class="f"><span>From</span><select class="in" id="mvFrom"></select></label>
+    <label class="f"><span>To</span><select class="in" id="mvTo"></select></label>
+    <label class="f"><span>Amount</span><input class="in mono" id="mvAmt" inputmode="decimal"></label>
+    <button class="btn brass" onclick="saveMove()">Move it</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: BILL FORM ============ -->
+<div class="sheet" id="shBill">
+  <div class="bg" onclick="closeSheet('shBill')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shBill')">✕</button>
+    <h3 id="billFormTitle">New bill</h3>
+    <label class="f"><span>Name</span><input class="in" id="bfName" placeholder="Rent, phone, Netflix…"></label>
+    <div class="grid2">
+      <label class="f"><span>Amount</span><input class="in mono" id="bfAmt" inputmode="decimal"></label>
+      <label class="f"><span>Due day of month</span><input class="in mono" id="bfDay" inputmode="numeric" placeholder="1–31"></label>
+    </div>
+    <label class="f"><span>Pays from envelope</span><select class="in" id="bfEnv"></select></label>
+    <label class="f"><span>Is this a subscription?</span>
+      <div class="chips">
+        <button class="c" id="bfSub1" onclick="bfSetSub(true)">Yes — audit it</button>
+        <button class="c" id="bfSub0" onclick="bfSetSub(false)">No, regular bill</button>
+      </div>
+    </label>
+    <button class="btn" onclick="saveBill()">Save bill</button>
+    <button class="btn danger" id="bfDelete" style="margin-top:10px;display:none" onclick="deleteBill()">Delete bill</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: DEBT FORM ============ -->
+<div class="sheet" id="shDebt">
+  <div class="bg" onclick="closeSheet('shDebt')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shDebt')">✕</button>
+    <h3 id="debtFormTitle">New debt</h3>
+    <label class="f"><span>Name</span><input class="in" id="dfName" placeholder="Car loan, credit card…"></label>
+    <div class="grid2">
+      <label class="f"><span>Balance</span><input class="in mono" id="dfBal" inputmode="decimal"></label>
+      <label class="f"><span>APR %</span><input class="in mono" id="dfApr" inputmode="decimal"></label>
+    </div>
+    <label class="f"><span>Minimum payment / month</span><input class="in mono" id="dfMin" inputmode="decimal"></label>
+    <button class="btn" onclick="saveDebt()">Save debt</button>
+    <button class="btn danger" id="dfDelete" style="margin-top:10px;display:none" onclick="deleteDebt()">Delete debt</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: ACCOUNT FORM ============ -->
+<div class="sheet" id="shAcct">
+  <div class="bg" onclick="closeSheet('shAcct')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shAcct')">✕</button>
+    <h3 id="acctFormTitle">New account</h3>
+    <label class="f"><span>Name</span><input class="in" id="afName" placeholder="TSP, USAA checking, Vanguard…"></label>
+    <div class="grid2">
+      <label class="f"><span>Type</span><select class="in" id="afType"><option value="asset">Asset</option><option value="liab">Liability</option></select></label>
+      <label class="f"><span>Balance</span><input class="in mono" id="afBal" inputmode="decimal"></label>
+    </div>
+    <div class="grid2">
+      <label class="f"><span>Category</span><select class="in" id="afTag">
+        <option value="cash">Cash / bank</option><option value="retire">Retirement (TSP, Roth)</option>
+        <option value="invest">Investments / UTMA</option><option value="property">Property</option><option value="other">Other</option></select></label>
+      <label class="f"><span>Monthly contribution</span><input class="in mono" id="afContrib" inputmode="decimal" placeholder="optional"></label>
+    </div>
+    <button class="btn" onclick="saveAcct()">Save account</button>
+    <button class="btn danger" id="afDelete" style="margin-top:10px;display:none" onclick="deleteAcct()">Delete account</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: ALL TRANSACTIONS ============ -->
+<div class="sheet" id="shAllTx">
+  <div class="bg" onclick="closeSheet('shAllTx')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shAllTx')">✕</button>
+    <h3>All activity</h3>
+    <input class="in" id="txSearch" placeholder="Search payee, note, envelope…" oninput="renderAllTx()" style="margin-bottom:12px">
+    <div id="allTxList"></div>
+  </div>
+</div>
+
+<!-- ============ SHEET: KID FORM ============ -->
+<div class="sheet" id="shKid">
+  <div class="bg" onclick="closeSheet('shKid')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shKid')">✕</button>
+    <h3 id="kidFormTitle">Add child</h3>
+    <label class="f"><span>Name</span><input class="in" id="kfName" placeholder="First name"></label>
+    <div class="grid2">
+      <label class="f"><span>Allowance amount</span><input class="in mono" id="kfRate" inputmode="decimal"></label>
+      <label class="f"><span>How often</span><select class="in" id="kfFreq"><option value="7">Weekly</option><option value="14">Every 2 weeks</option><option value="30">Monthly</option></select></label>
+    </div>
+    <label class="f"><span>Split — Spend / Save / Give (%)</span>
+      <div class="row" style="gap:8px">
+        <input class="in mono" id="kfSpend" inputmode="numeric" value="50" style="text-align:center">
+        <input class="in mono" id="kfSave" inputmode="numeric" value="40" style="text-align:center">
+        <input class="in mono" id="kfGive" inputmode="numeric" value="10" style="text-align:center">
+      </div>
+    </label>
+    <div class="muted" id="kfSplitWarn" style="margin-bottom:10px"></div>
+    <label class="f"><span>Allowance comes from envelope</span><select class="in" id="kfEnv"></select></label>
+    <button class="btn" onclick="saveKid()">Save child</button>
+    <button class="btn danger" id="kfDelete" style="margin-top:10px;display:none" onclick="deleteKid()">Remove child</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: JAR ACTION ============ -->
+<div class="sheet" id="shJar">
+  <div class="bg" onclick="closeSheet('shJar')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shJar')">✕</button>
+    <h3 id="jarTitle">Jar</h3>
+    <div class="seg" id="jarSeg">
+      <button data-k="spend" onclick="setJarAct('spend')">Spend from jar</button>
+      <button data-k="add" onclick="setJarAct('add')">Add money</button>
+    </div>
+    <input class="amountin" id="jarAmt" inputmode="decimal" placeholder="$0.00">
+    <label class="f" style="margin-top:14px"><span>What for?</span><input class="in" id="jarNote" placeholder="Toy, gift, saved up…"></label>
+    <button class="btn brass" onclick="saveJar()">Done</button>
+    <h3 style="margin-top:18px">History</h3>
+    <div id="jarHist"></div>
+  </div>
+</div>
+
+<!-- ============ SHEET: LOG GIFT ============ -->
+<div class="sheet" id="shGift">
+  <div class="bg" onclick="closeSheet('shGift')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shGift')">✕</button>
+    <h3>🤲 Log a gift</h3>
+    <input class="amountin" id="giftAmt" inputmode="decimal" placeholder="$0.00">
+    <label class="f" style="margin-top:14px"><span>To whom</span><input class="in" id="giftTo" placeholder="Church, charity…"></label>
+    <div class="grid2">
+      <label class="f"><span>Date</span><input class="in" type="date" id="giftDate"></label>
+      <label class="f"><span>Logged by</span><select class="in" id="giftWho"></select></label>
+    </div>
+    <button class="btn brass" onclick="saveGift()">Log gift</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: PICK EMERGENCY / MONTHLY ============ -->
+<div class="sheet" id="shEmerg">
+  <div class="bg" onclick="closeSheet('shEmerg')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shEmerg')">✕</button>
+    <h3>Emergency fund</h3>
+    <label class="f"><span>Which goal is your emergency fund?</span><select class="in" id="emGoal" onchange="if(this.value==='_new'&&!document.querySelector('#emTarget').value){document.querySelector('#emTarget').focus()}"></select></label>
+    <div class="muted" style="margin-bottom:12px">Don't have one yet? Create a goal called "Emergency Fund" on the Goals screen, then pick it here.</div>
+    <label class="f"><span>Months of expenses to target</span><select class="in" id="emMonths"><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+    <label class="f"><span>Or set your own target amount (overrides the auto math)</span><input class="in mono" id="emTarget" inputmode="decimal" placeholder="auto: monthly need × months"></label>
+    <button class="btn" onclick="saveEmergency()">Save</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: VAULT ITEM ============ -->
+<div class="sheet" id="shVault">
+  <div class="bg" onclick="closeSheet('shVault')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shVault')">✕</button>
+    <h3 id="vaultFormTitle">Readiness item</h3>
+    <label class="f"><span>Item</span><input class="in" id="vfName" placeholder="Will, SGLI, POA…"></label>
+    <label class="f"><span>Status</span><select class="in" id="vfStatus">
+      <option value="done">✅ In place</option><option value="review">🟡 Needs review</option><option value="missing">🔴 Missing</option></select></label>
+    <label class="f"><span>Where it lives / who to call</span><input class="in" id="vfNote" placeholder="Safe, JAG office, USAA doc vault…"></label>
+    <button class="btn" onclick="saveVault()">Save item</button>
+    <button class="btn danger" id="vfDelete" style="margin-top:10px;display:none" onclick="deleteVault()">Delete item</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: ANNUAL EXPENSE ============ -->
+<div class="sheet" id="shAnnual">
+  <div class="bg" onclick="closeSheet('shAnnual')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shAnnual')">✕</button>
+    <h3 id="annFormTitle">Yearly expense</h3>
+    <label class="f"><span>Name</span><input class="in" id="anName" placeholder="Car insurance, Christmas, registration…"></label>
+    <div class="grid2">
+      <label class="f"><span>Amount</span><input class="in mono" id="anAmt" inputmode="decimal"></label>
+      <label class="f"><span>Month it hits</span><select class="in" id="anMonth"></select></label>
+    </div>
+    <button class="btn" onclick="saveAnnual()">Save</button>
+    <button class="btn danger" id="anDelete" style="margin-top:10px;display:none" onclick="deleteAnnual()">Delete</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: TANK ENTRY ============ -->
+<div class="sheet" id="shTank">
+  <div class="bg" onclick="closeSheet('shTank')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shTank')">✕</button>
+    <h3 id="tankTitle">Deposit</h3>
+    <input class="amountin" id="tankAmt" inputmode="decimal" placeholder="$0.00">
+    <label class="f" style="margin-top:14px"><span>Note</span><input class="in" id="tankNote" placeholder="MNQ week of…, cleared withdrawal…"></label>
+    <div class="muted" id="tankSweepNote" style="margin-bottom:12px;display:none">Sweeping logs this as income in the family budget — it'll show up in "to assign."</div>
+    <button class="btn brass" id="tankGo" onclick="saveTank()">Save</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: UPDATE BALANCES ============ -->
+<div class="sheet" id="shUpd">
+  <div class="bg" onclick="closeSheet('shUpd')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shUpd')">✕</button>
+    <h3>🔄 Monthly balance update</h3>
+    <div class="muted" style="margin-bottom:14px">Type today's balances straight from each app or statement. Saving updates every account and files a net worth snapshot in one shot.</div>
+    <div id="updList"></div>
+    <button class="btn brass" style="margin-top:6px" onclick="saveUpd()">Save all + snapshot</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: NET WORTH GOAL ============ -->
+<div class="sheet" id="shNWGoal">
+  <div class="bg" onclick="closeSheet('shNWGoal')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shNWGoal')">✕</button>
+    <h3>Net worth goal</h3>
+    <div class="grid2">
+      <label class="f"><span>Target net worth</span><input class="in mono" id="nwgTarget" inputmode="decimal"></label>
+      <label class="f"><span>By when</span><input class="in" type="month" id="nwgDate"></label>
+    </div>
+    <button class="btn" onclick="saveNWGoal()">Save goal</button>
+  </div>
+</div>
+
+<!-- ============ SHEET: SETTINGS / WIZARD ============ -->
+<div class="sheet" id="shSettings">
+  <div class="bg" onclick="if(cfg.mode)closeSheet('shSettings')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" id="setClose" onclick="closeSheet('shSettings')">✕</button>
+
+    <!-- Wizard -->
+    <div id="wiz" style="display:none">
+      <div class="wizlogo"><div class="mark">Home Base</div><div class="sub">Family money HQ</div></div>
+      <p class="muted" style="text-align:center;margin-bottom:18px">Zero-based envelopes, live-synced between your phones.</p>
+      <div id="wizStep1">
+        <button class="btn" onclick="wizGo(2)">☁️ Sync with Firebase (recommended)</button>
+        <button class="btn sec" style="margin-top:10px" onclick="wizLocal()">📱 This device only</button>
+      </div>
+      <div id="wizStep2" style="display:none">
+        <label class="f"><span>Firebase Realtime Database URL</span>
+          <input class="in" id="wizDb" placeholder="https://your-project-default-rtdb.firebaseio.com"></label>
+        <div class="notice">Same URL as your current family-budget app — find it in Firebase Console → Realtime Database. Data lives under <b>hb5/</b> so your v1 data is untouched.</div>
+        <label class="f"><span>Your first name</span><input class="in" id="wizName" placeholder="Lee"></label>
+        <button class="btn brass" onclick="wizCreate()">Create new household</button>
+        <div class="row" style="margin-top:14px;gap:8px">
+          <input class="in mono" id="wizJoin" inputmode="numeric" placeholder="6-digit code" style="flex:1">
+          <button class="btn sec sm" style="height:47px" onclick="wizJoinHH()">Join</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div id="setBody" style="display:none">
+      <h3>⚙️ Settings</h3>
+      <div class="card">
+        <div class="eyebrow">Household</div>
+        <div class="kv"><span>Code</span><b id="setCode"></b></div>
+        <div class="kv"><span>Sync</span><b id="setSync"></b></div>
+        <div class="kv"><span>You are</span><b id="setMe"></b></div>
+        <div class="kv"><span id="langLbl">Language on this phone</span>
+          <span class="seg" style="margin:0;padding:2px"><button id="langEN" style="padding:5px 12px" onclick="setLang('en')">EN</button><button id="langES" style="padding:5px 12px" onclick="setLang('es')">ES</button></span></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow" style="margin-bottom:10px">Budget setup</div>
+        <label class="f"><span>Income per paycheck</span><input class="in mono" id="setInc" inputmode="decimal" onchange="saveSettings()"></label>
+        <div class="grid2">
+          <label class="f" id="setAnchorWrap"><span>A recent payday</span><input class="in" type="date" id="setAnchor" onchange="saveSettings()"></label>
+          <label class="f"><span>Pay cycle</span><select class="in" id="setFreq" onchange="saveSettings()">
+            <option value="semi">1st &amp; 15th of month</option><option value="14">Every 2 weeks</option><option value="7">Weekly</option><option value="30">Monthly</option></select></label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="eyebrow" style="margin-bottom:10px">Members</div>
+        <div id="setMembers"></div>
+        <div class="row" style="margin-top:8px;gap:8px">
+          <input class="in" id="newMember" placeholder="Add member name" style="flex:1">
+          <button class="btn sec sm" style="height:47px" onclick="addMember()">Add</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="eyebrow" style="margin-bottom:10px">Receipt scanning</div>
+        <label class="f"><span>Anthropic API key</span><input class="in" id="setKey" type="password" placeholder="sk-ant-…" onchange="localStorage.setItem('hb4_apikey',this.value.trim());toast('API key saved')"></label>
+      </div>
+      <div class="card">
+        <div class="eyebrow" style="margin-bottom:10px">Backup</div>
+        <button class="btn sec sm" onclick="exportJSON()">⬇ Export JSON backup</button>
+        <button class="btn sec sm" style="margin-left:8px" onclick="document.getElementById('importFile').click()">⬆ Import backup</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+      </div>
+      <button class="btn danger" onclick="leaveHH()">Leave household on this device</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="receiptFile" accept="image/*" capture="environment" style="display:none" onchange="handleReceipt(this)">
+
+<script>
+/* ================= utilities ================= */
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=c=>{const n=(c||0)/100;return (n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})};
+const fmt0=c=>{const n=(c||0)/100;return (n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0})};
+const toC=v=>Math.round(parseFloat(String(v).replace(/[^0-9.\-]/g,''))*100)||0;
+const today=()=>new Date().toISOString().slice(0,10);
+const dShort=s=>new Date(s+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const MEMBER_COLORS=['#2E7D8C','#7C4B73','#B4720E','#2C5C49','#8A5A2B','#4B5F9E'];
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2200)}
+
+/* surface real errors instead of the browser's masked "Script error." */
+window.addEventListener('error',e=>{const m=e.message&&e.message!=='Script error.'?e.message:(e.filename?('Error in '+e.filename.split('/').pop()):'A script error occurred');
+  try{toast('⚠ '+m)}catch(_){}}); 
+window.addEventListener('unhandledrejection',e=>{const r=e.reason;const m=(r&&r.message)||String(r||'Sync issue');
+  try{toast('⚠ '+m)}catch(_){}});
+function fbReady(){return typeof firebase!=='undefined'&&firebase&&firebase.database}
+
+/* ================= state & sync ================= */
+let cfg=JSON.parse(localStorage.getItem('hb5_cfg')||'{}'); // {mode:'cloud'|'local', dbUrl, code, member}
+const blank=()=>({settings:{income:0,anchor:today(),freq:'semi',extraDebt:0,debtMethod:'snowball'},
+  members:{},env:{},budgets:{},tx:{},bills:{},debts:{},accounts:{},snaps:{},kids:{},kidTx:{},vault:{},annuals:{},tank:{},calnotes:{}});
+let data=blank();
+try{const c=localStorage.getItem('hb5_cache');if(c)data=Object.assign(blank(),JSON.parse(c))}catch(e){}
+let fdb=null,rootRef=null;
+
+function cache(){localStorage.setItem('hb5_cache',JSON.stringify(data))}
+function saveCfg(){localStorage.setItem('hb5_cfg',JSON.stringify(cfg))}
+function setDot(on){const d=$('#syncDot');d.className='dot '+(cfg.mode==='cloud'?(on?'on':'off'):'on')}
+
+function connectCloud(){
+  if(cfg.mode!=='cloud'||!cfg.dbUrl)return;
+  if(!fbReady()){setDot(false);toast('Firebase didn\'t load — check your connection and reload');return}
+  try{
+    if(!firebase.apps.length)firebase.initializeApp({databaseURL:cfg.dbUrl});
+    fdb=firebase.database();rootRef=fdb.ref('hb5/'+cfg.code);
+    rootRef.on('value',snap=>{
+      const v=snap.val();
+      if(v){data=Object.assign(blank(),v);data.settings=Object.assign(blank().settings,v.settings||{});cache();renderAll();}
+    },err=>{setDot(false);toast('Sync error — check database rules')});
+    fdb.ref('.info/connected').on('value',s=>setDot(!!s.val()));
+  }catch(e){setDot(false);toast('Could not connect to Firebase')}
+}
+function setPath(obj,path,val){const parts=path.split('/');let o=obj;for(let i=0;i<parts.length-1;i++){o[parts[i]]=o[parts[i]]||{};o=o[parts[i]]}
+  if(val===null)delete o[parts[parts.length-1]];else o[parts[parts.length-1]]=val}
+function put(path,val){setPath(data,path,val);cache();renderAll();
+  if(rootRef){(val===null?rootRef.child(path).remove():rootRef.child(path).set(val)).catch(()=>toast('Write failed — will retry when online'))}}
+
+/* ================= period math ================= */
+function isSemi(){return data.settings.freq==='semi'}
+function anchorDate(){return new Date((data.settings.anchor||today())+'T00:00:00')}
+function pidOf(dateStr){const d=new Date(dateStr+'T00:00:00');
+  if(isSemi())return d.getFullYear()*24+d.getMonth()*2+(d.getDate()>=15?1:0);
+  return Math.floor((d-anchorDate())/(864e5*(+data.settings.freq||14)))}
+function pStart(p){if(isSemi()){const y=Math.floor(p/24),r=p-y*24;return new Date(y,Math.floor(r/2),r%2?15:1)}
+  const d=new Date(anchorDate());d.setDate(d.getDate()+p*(+data.settings.freq||14));return d}
+function payPerMonth(){return isSemi()?2:30.44/(+data.settings.freq||14)}
+function weeksPerPeriod(){return isSemi()?(30.44/2)/7:(+data.settings.freq||14)/7}
+function pEnd(p){const d=pStart(p+1);d.setDate(d.getDate()-1);return d}
+function pLabel(p){const f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});return f(pStart(p))+' – '+f(pEnd(p))}
+let viewP=0;function curP(){return pidOf(today())}
+function minPid(){let m=curP();Object.keys(data.budgets||{}).forEach(k=>m=Math.min(m,+k));
+  Object.values(data.tx||{}).forEach(t=>m=Math.min(m,pidOf(t.date)));return m}
+
+/* ================= money math ================= */
+const envs=()=>Object.entries(data.env||{}).map(([id,e])=>({id,...e})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+function alloc(envId,p){const b=data.budgets?.[p]?.[envId];if(b!=null)return b;
+  const e=data.env?.[envId];if(e&&e.def&&e.startP!=null&&p>=e.startP)return e.def;return 0}
+function allocTotal(p){let s=0;for(const id of Object.keys(data.env||{}))s+=alloc(id,p);
+  // include any orphan budget entries for deleted envelopes so math stays honest
+  for(const[id,v]of Object.entries(data.budgets?.[p]||{}))if(!data.env?.[id])s+=v;return s}
+function txList(){return Object.entries(data.tx||{}).map(([id,t])=>({id,...t})).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))}
+function envFlow(envId,p){ // net spent (positive) in period p for envelope
+  let s=0;for(const t of Object.values(data.tx||{})){if(pidOf(t.date)!==p)continue;
+    if(t.kind==='exp'&&t.env===envId)s+=t.amt;
+    if(t.kind==='inc'&&t.env===envId)s-=t.amt;
+    if(t.kind==='mv'){if(t.from===envId)s+=t.amt;if(t.to===envId)s-=t.amt}}
+  return s}
+function avail(envId,p){const e=data.env[envId];if(!e)return 0;
+  if(e.roll||e.kind==='goal'){let s=0;for(let q=minPid();q<=p;q++)s+=alloc(envId,q)-envFlow(envId,q);return s}
+  return alloc(envId,p)-envFlow(envId,p)}
+function toAssign(p){return (data.settings.income||0)-allocTotal(p)}
+function spentPeriod(p){let s=0;for(const t of Object.values(data.tx||{}))if(t.kind==='exp'&&pidOf(t.date)===p)s+=t.amt;return s}
+function safeToSpend(p){let s=0;for(const e of envs())if(e.kind!=='goal')s+=Math.max(0,avail(e.id,p));return s}
+
+/* ================= navigation ================= */
+const VIEWS=['home','env','bills','more','goals','debts','worth','reports','road','kids','give','trans','cal','subs','vault','tank','help'];
+function go(v){VIEWS.forEach(x=>{const el=$('#v-'+x);if(el)el.classList.toggle('on',x===v)});
+  ['home','env','bills','more'].forEach(x=>$('#t-'+x)?.classList.toggle('on',x===v||(!['home','env','bills'].includes(v)&&x==='more')));
+  window.scrollTo(0,0);cfg._view=v;renderAll()}
+function openSheet(id){$('#'+id).classList.add('on');if(id==='shSettings')renderSettings()}
+function closeSheet(id){$('#'+id).classList.remove('on')}
+function shiftPeriod(d){viewP+=d;renderAll()}
+
+/* ================= renderers ================= */
+function renderAll(){
+  $('#hhCode').textContent=cfg.code?('#'+cfg.code):(cfg.mode==='local'?'LOCAL':'SETUP');
+  renderBeam();const v=cfg._view||'home';
+  if(v==='home')renderHome();if(v==='env')renderEnvView();if(v==='bills')renderBills();
+  if(v==='goals')renderGoals();if(v==='debts')renderDebts();if(v==='worth')renderWorth();if(v==='reports')renderReports();
+  if(v==='road')renderRoad();if(v==='kids')renderKids();if(v==='give')renderGive();
+  if(v==='trans')renderTrans();if(v==='cal')renderCal();if(v==='subs')renderSubs();
+  if(v==='vault')renderVault();if(v==='tank')renderTank();
+  if(v==='help')renderHelp();
+}
+function renderBeam(){const p=curP(),ta=toAssign(p),el=$('#zerobeam');
+  el.className='zerobeam '+(ta===0?'zero':ta>0?'pos':'neg');
+  $('#zbVal').textContent=ta===0?'✓ $0.00':fmt(Math.abs(ta));
+  $('#zbState').textContent=ta===0?T('zb.job'):(ta>0?T('zb.assign'):T('zb.over'));
+  const inc=data.settings.income||1;$('#zbBar').style.transform='scaleX('+Math.min(1,Math.max(0,allocTotal(p)/inc))+')'}
+
+function whoBadge(m){const i=Object.keys(data.members).indexOf(m);const col=MEMBER_COLORS[(i<0?0:i)%MEMBER_COLORS.length];
+  return '<span class="who" style="background:'+col+'">'+esc((data.members[m]?.name||m||'?').slice(0,2).toUpperCase())+'</span>'}
+function txRow(t,showDel){const e=data.env[t.env];const sign=t.kind==='inc'?'+':t.kind==='mv'?'⇄ ':'−';
+  const cls=t.kind==='inc'?'pos-t':'';
+  const sub=t.kind==='mv'?((data.env[t.from]?.name||'?')+' → '+(data.env[t.to]?.name||'?')):
+    ((e?.name||'No envelope')+' · '+dShort(t.date)+(t.note?' · '+esc(t.note):''));
+  return '<button class="tx" onclick="txTap(\''+t.id+'\')">'+whoBadge(t.who)+
+    '<span class="mid"><span class="p">'+esc(t.payee||(t.kind==='mv'?'Money move':'—'))+'</span><br><span class="s">'+sub+'</span></span>'+
+    '<span class="a '+cls+'">'+(t.kind==='mv'?'':sign)+fmt(t.amt).replace('−','')+'</span></button>'}
+function txTap(id){const t=data.tx[id];if(!t)return;
+  if(confirm('Delete this entry?\n'+(t.payee||'')+' '+fmt(t.amt)))put('tx/'+id,null),toast('Deleted')}
+
+function envRowHTML(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
+  const denom=e.kind==='goal'?(e.target||1):(a||1);
+  const pct=Math.min(1,Math.max(0,(e.kind==='goal'?av:f)/denom));
+  const barCls=e.kind==='goal'?'goal':(av<0?'over':(a&&f/a>.85?'warn':''));
+  const availTxt=av<0?'<span class="neg-t">'+fmt(av)+' over</span>':fmt(av)+' left';
+  return '<button class="env" style="display:block;width:100%;text-align:left" onclick="openFund(\''+e.id+'\')">'+
+    '<span class="top"><span class="name">'+(e.kind==='goal'?'🎯 ':'')+esc(e.name)+'</span><span class="amt">'+fmt(av)+'</span></span>'+
+    '<span class="sub"><span>'+(e.kind==='goal'?('of '+fmt(e.target||0)+' target'):('assigned '+fmt(a)+' · spent '+fmt(f)))+'</span><span>'+(e.kind==='goal'?Math.round(pct*100)+'%':availTxt)+'</span></span>'+
+    '<span class="bar"><i class="'+barCls+'" style="width:'+(pct*100)+'%"></i></span></button>'}
+
+function renderHome(){const p=curP();
+  // greeting + period position
+  const name=data.members?.[cfg.member]?.name||'';
+  const hr=new Date().getHours();const g=hr<12?T('g.m'):hr<18?T('g.a'):T('g.e');
+  $('#hHello').textContent=g+(name?', '+name:'');
+  const loc=lang()==='es'?'es':'en-US';
+  const ps=pStart(p),pe=pEnd(p),np=pStart(p+1),now=new Date(new Date().toDateString());
+  const dayN=Math.floor((now-ps)/864e5)+1,totalD=Math.round((pe-ps)/864e5)+1;
+  const daysToPay=Math.max(0,Math.round((np-now)/864e5));
+  $('#hSub').textContent=now.toLocaleDateString(loc,{weekday:'long',month:'short',day:'numeric'})+' · '+
+    T('g.day')+' '+dayN+' '+T('g.of')+' '+totalD+' · '+T('g.next')+' '+np.toLocaleDateString(loc,{month:'short',day:'numeric'});
+  // tile 1: safe to spend + plan state
+  const ta=toAssign(p);
+  const overEnv=envs().find(e=>e.kind!=='goal'&&avail(e.id,p)<0);
+  let s1='ok',st1=T('g.onplan');
+  if(overEnv){s1='over';st1=esc(overEnv.name)+' '+T('g.over')}
+  else if(ta>0){s1='warn';st1=fmt0(ta)+' '+T('g.toassign')}
+  let t1='<div class="tile '+s1+'"><div class="eyebrow">'+T('g.safe')+'</div><div class="big">'+fmt0(safeToSpend(p))+'</div><div class="st">'+st1+'</div></div>';
+  // tile 2: tightest envelope, else spent this period
+  const sp=envs().filter(e=>e.kind!=='goal'&&alloc(e.id,p)>0)
+    .map(e=>({e,av:avail(e.id,p),a:alloc(e.id,p)})).sort((x,y)=>(x.av/x.a)-(y.av/y.a));
+  let t2;
+  if(sp.length){const x=sp[0];const cls=x.av<0?'over':(x.av/x.a<.25?'warn':'ok');
+    t2='<div class="tile '+cls+'"><div class="eyebrow">'+esc(x.e.name)+' '+T('g.left')+'</div><div class="big">'+fmt0(x.av)+'</div><div class="st">'+daysToPay+' '+T('g.dayspay')+'</div></div>'}
+  else t2='<div class="tile ok"><div class="eyebrow">'+T('g.spent')+'</div><div class="big">'+fmt0(spentPeriod(p))+'</div><div class="st">'+pLabel(p)+'</div></div>';
+  $('#hTiles').innerHTML=t1+t2;
+  // today & next card
+  const rows=[];
+  upcomingBills(7).slice(0,3).forEach(b=>{const dd=Math.round((b.due-now)/864e5);
+    const when=dd<=0?T('g.today2'):dd===1?T('g.tomorrow'):b.due.toLocaleDateString(loc,{weekday:'short'});
+    rows.push('<div class="trow"><span>📄 '+esc(b.name)+' · '+when+'</span><b>'+fmt(b.amt)+'</b></div>')});
+  const goal=envs().filter(e=>e.kind==='goal'&&e.targetDate&&(e.target||0)>avail(e.id,p))
+    .map(e=>{const rem=Math.max(0,(e.target||0)-avail(e.id,p));const per=Math.max(1,pidOf(e.targetDate)-p);
+      return{e,need:Math.ceil(rem/per),got:alloc(e.id,p)}}).sort((a,b)=>b.need-a.need)[0];
+  if(goal)rows.push('<div class="trow"><span>🎯 '+esc(goal.e.name)+' '+T('g.thisperiod')+'</span><b>'+fmt0(goal.got)+(goal.got>=goal.need?' ✓':' / '+fmt0(goal.need))+'</b></div>');
+  $('#hTodayCard').style.display=rows.length?'':'none';
+  $('#hToday').innerHTML=rows.join('');
+  $('#hTodayLbl').textContent=T('g.todaynext');
+  // envelopes + activity (unchanged)
+  const es=envs().filter(e=>e.kind!=='goal').map(e=>({e,av:avail(e.id,p),a:alloc(e.id,p)}))
+    .sort((x,y)=>x.av-y.av).slice(0,5);
+  $('#hEnv').innerHTML=es.length?es.map(x=>envRowHTML(x.e,p)).join(''):
+    '<div class="empty">No envelopes yet. Tap <b>Budget</b> to build your plan.</div>';
+  const txs=txList().slice(0,8);
+  $('#hTx').innerHTML=txs.length?txs.map(t=>txRow(t)).join(''):'<div class="empty">Nothing logged yet. Hit the ＋ to add your first transaction.</div>'}
+
+function renderEnvView(){const p=curP()+viewP;
+  $('#envPeriodLbl').textContent=pLabel(p)+(viewP===0?' · now':'');
+  $('#envInc').textContent=fmt(data.settings.income||0);
+  $('#envAlloc').textContent=fmt(allocTotal(p));
+  const ta=toAssign(p);const l=$('#envLeft');l.textContent=fmt(Math.abs(ta));
+  l.className=ta===0?'pos-t':ta>0?'amber-t':'neg-t';
+  $('#envLeftLbl').textContent=ta>=0?'Left to assign':'Over-assigned';
+  const sp=envs().filter(e=>e.kind!=='goal'),gl=envs().filter(e=>e.kind==='goal');
+  $('#envList').innerHTML=sp.length?sp.map(e=>envRowHTML(e,p)).join(''):'<div class="empty">Add envelopes for groceries, gas, fun money…</div>';
+  $('#envGoalList').innerHTML=gl.length?gl.map(e=>envRowHTML(e,p)).join(''):'<div class="empty">Sinking funds live here — car repairs, Christmas, PCS moves.</div>'}
+
+/* ---- bills ---- */
+function bills(){return Object.entries(data.bills||{}).map(([id,b])=>({id,...b})).sort((a,b)=>a.day-b.day)}
+function nextDue(b){const n=new Date();
+  let d=new Date(n.getFullYear(),n.getMonth(),Math.min(b.day,daysInMonth(n)));
+  if(isPaid(b,d)||d<new Date(n.getFullYear(),n.getMonth(),n.getDate())){const m=new Date(n.getFullYear(),n.getMonth()+1,1);
+    d=new Date(m.getFullYear(),m.getMonth(),Math.min(b.day,daysInMonth(m)))}
+  return d}
+function daysInMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0).getDate()}
+function ym(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function isPaid(b,d){return !!(b.paid&&b.paid[ym(d)])}
+function upcomingBills(days){const now=new Date();const lim=new Date(now.getTime()+days*864e5);
+  return bills().map(b=>({...b,due:nextDue(b)})).filter(b=>b.due<=lim&&!isPaid(b,b.due)).sort((a,b)=>a.due-b.due)}
+function billRow(b){const due=b.due||nextDue(b);const paid=isPaid(b,due);
+  const dd=Math.round((due-new Date(new Date().toDateString()))/864e5);
+  const when=paid?'Paid ✓':dd<0?'Overdue':dd===0?'Due today':dd===1?'Due tomorrow':'Due '+due.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return '<div class="tx"><span class="iconb">'+(paid?'✅':'📄')+'</span>'+
+    '<span class="mid"><span class="p"'+(paid?' style="text-decoration:line-through;color:var(--ink3)"':'')+'>'+esc(b.name)+'</span><br><span class="s '+(dd<=1&&!paid?'neg-t':'')+'">'+when+' · '+esc(data.env[b.env]?.name||'no envelope')+'</span></span>'+
+    '<span class="a">'+fmt(b.amt)+'</span>'+
+    (paid?'<button class="btn ghost sm" onclick="openBillForm(\''+b.id+'\')">✎</button>':
+    '<button class="btn sec sm" onclick="payBill(\''+b.id+'\')">Pay</button>'+
+    '<button class="btn ghost sm" onclick="openBillForm(\''+b.id+'\')">✎</button>')+'</div>'}
+function renderBills(){const bs=bills().map(b=>({...b,due:nextDue(b)}));
+  const tot=bs.reduce((s,b)=>s+b.amt,0);
+  $('#billTotals').textContent=bs.length?bs.length+' bills · '+fmt(tot)+' / month':'';
+  $('#billList').innerHTML=bs.length?bs.map(b=>billRow(b)).join(''):'<div class="empty">Add your recurring bills to never miss a due date.</div>'}
+function payBill(id){const b=data.bills[id];if(!b)return;const due=nextDue(b);
+  const txId=uid();put('tx/'+txId,{kind:'exp',amt:b.amt,env:b.env||null,payee:b.name,date:today(),who:cfg.member,note:'Bill'});
+  put('bills/'+id+'/paid/'+ym(due),txId);toast(b.name+' marked paid')}
+
+/* ---- goals ---- */
+function renderGoals(){renderAnnual();const p=curP();const gl=envs().filter(e=>e.kind==='goal');
+  $('#goalList').innerHTML=gl.length?gl.map(e=>{const av=avail(e.id,p);const rem=Math.max(0,(e.target||0)-av);
+    let need='';if(e.targetDate&&rem>0){const periods=Math.max(1,pidOf(e.targetDate)-curP());
+      need='<div class="muted" style="margin-top:4px">Assign <b class="mono">'+fmt(Math.ceil(rem/periods))+'</b> per paycheck to hit '+dShort(e.targetDate)+'</div>'}
+    return envRowHTML(e,p)+need}).join(''):'<div class="empty">No goals yet — add Christmas, car fund, vacation, emergency fund…</div>'}
+
+/* ---- debts ---- */
+function debts(){return Object.entries(data.debts||{}).map(([id,d])=>({id,...d}))}
+function setDebtMethod(m){put('settings/debtMethod',m)}
+function saveExtraDebt(v){put('settings/extraDebt',toC(v))}
+function debtPlan(){const list=debts().filter(d=>d.bal>0);const method=data.settings.debtMethod||'snowball';
+  const order=[...list].sort((a,b)=>method==='snowball'?a.bal-b.bal:b.apr-a.apr);
+  let bals=Object.fromEntries(order.map(d=>[d.id,d.bal]));let months=0,interest=0;
+  const extra=data.settings.extraDebt||0;
+  while(months<600&&Object.values(bals).some(b=>b>0)){months++;let ex=extra;
+    for(const d of order){if(bals[d.id]<=0)continue;const i=Math.round(bals[d.id]*(d.apr/100)/12);interest+=i;bals[d.id]+=i;
+      let pay=Math.min(bals[d.id],d.min);bals[d.id]-=pay}
+    for(const d of order){if(bals[d.id]<=0||ex<=0)continue;const pay=Math.min(bals[d.id],ex);bals[d.id]-=pay;ex-=pay;break}}
+  return{order,months,interest,method}}
+function renderDebts(){const m=data.settings.debtMethod||'snowball';
+  document.querySelectorAll('#debtSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $('#extraDebt').value=((data.settings.extraDebt||0)/100)||'';
+  const ds=debts();const tot=ds.reduce((s,d)=>s+d.bal,0);
+  if(!ds.length){$('#debtSummary').innerHTML='';$('#debtList').innerHTML='<div class="empty">Debt-free — or add what you\'re attacking.</div>';return}
+  const plan=debtPlan();const free=new Date();free.setMonth(free.getMonth()+plan.months);
+  $('#debtSummary').innerHTML='<div class="card" style="background:var(--green);color:#EDF3EE;border:0">'+
+    '<div class="eyebrow" style="color:#9FB8A9">Total enemy</div><div class="big">'+fmt0(tot)+'</div>'+
+    '<div class="muted" style="color:#CFE0D3">'+(plan.months<600?('Debt-free <b>'+free.toLocaleDateString('en-US',{month:'long',year:'numeric'})+'</b> · '+fmt0(plan.interest)+' interest on this plan'):'Increase payments — this plan never finishes')+'</div></div>';
+  $('#debtList').innerHTML=plan.order.map((d,i)=>'<button class="tx" onclick="openDebtForm(\''+d.id+'\')">'+
+    '<span class="iconb">'+(i===0?'🎯':(i+1))+'</span><span class="mid"><span class="p">'+esc(d.name)+(i===0?' — attack first':'')+'</span><br>'+
+    '<span class="s">'+d.apr+'% APR · min '+fmt(d.min)+'/mo</span></span><span class="a">'+fmt0(d.bal)+'</span></button>').join('')}
+
+/* ---- net worth ---- */
+function accts(){return Object.entries(data.accounts||{}).map(([id,a])=>({id,...a}))}
+function nwTotal(){return accts().reduce((s,a)=>s+(a.type==='liab'?-a.bal:a.bal),0)}
+function snapshotNW(){put('snaps/'+uid(),{d:today(),t:nwTotal()});toast('Snapshot saved')}
+function openUpd(){const A=accts();if(!A.length)return toast('Add accounts first');
+  $('#updList').innerHTML=A.sort((a,b)=>(a.type||'').localeCompare(b.type||'')).map(a=>
+    '<label class="f"><span>'+esc(a.name)+(a.type==='liab'?' (owed)':'')+' — was '+fmt0(a.bal)+'</span>'+
+    '<input class="in mono" data-upd="'+a.id+'" inputmode="decimal" value="'+((a.bal||0)/100)+'"></label>').join('');
+  openSheet('shUpd')}
+function saveUpd(){let changed=0;document.querySelectorAll('#updList [data-upd]').forEach(inp=>{
+    const id=inp.dataset.upd,v=toC(inp.value);
+    if(data.accounts[id]&&data.accounts[id].bal!==v){put('accounts/'+id+'/bal',v);changed++}});
+  put('snaps/'+uid(),{d:today(),t:nwTotal()});
+  closeSheet('shUpd');toast(changed+' account'+(changed===1?'':'s')+' updated · snapshot saved')}
+
+/* ---- reports ---- */
+function renderReports(){const now=new Date();const months=[];
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(ym(d))}
+  const inc=months.map(m=>0),exp=months.map(m=>0);
+  for(const t of Object.values(data.tx||{})){const i=months.indexOf(t.date.slice(0,7));if(i<0)continue;
+    if(t.kind==='inc')inc[i]+=t.amt;if(t.kind==='exp')exp[i]+=t.amt}
+  barChart($('#repFlow'),months.map(m=>new Date(m+'-02').toLocaleDateString('en-US',{month:'short'})),
+    [{c:'#2C5C49',v:inc},{c:'#B3402F',v:exp}]);
+  const cm=ym(now);const byEnv={},byWho={};
+  for(const t of Object.values(data.tx||{})){if(t.kind!=='exp'||t.date.slice(0,7)!==cm)continue;
+    const en=data.env[t.env]?.name||'No envelope';byEnv[en]=(byEnv[en]||0)+t.amt;
+    const w=data.members[t.who]?.name||'?';byWho[w]=(byWho[w]||0)+t.amt}
+  const mx=Math.max(1,...Object.values(byEnv));
+  $('#repEnv').innerHTML=Object.entries(byEnv).sort((a,b)=>b[1]-a[1]).map(([n,v])=>
+    '<div class="env"><div class="top"><span class="name">'+esc(n)+'</span><span class="amt">'+fmt(v)+'</span></div>'+
+    '<div class="bar"><i style="width:'+(v/mx*100)+'%"></i></div></div>').join('')||'<div class="empty">No spending logged this month.</div>';
+  const tw=Object.values(byWho).reduce((s,v)=>s+v,0)||1;
+  $('#repWho').innerHTML=Object.entries(byWho).map(([n,v])=>
+    '<div class="kv"><span>'+esc(n)+'</span><b>'+fmt(v)+' · '+Math.round(v/tw*100)+'%</b></div>').join('')||'<div class="empty">No spending logged this month.</div>'}
+
+function prepCanvas(cv){const dpr=window.devicePixelRatio||1;if(!cv.dataset.h)cv.dataset.h=cv.getAttribute('height')||150;const w=cv.clientWidth||300,h=+cv.dataset.h;
+  cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);return{ctx,w,h}}
+function barChart(cv,labels,series){if(!cv)return;const{ctx,w,h}=prepCanvas(cv);const pad=24;
+  const mx=Math.max(1,...series.flatMap(s=>s.v));const n=labels.length;const gw=(w-pad)/n;
+  ctx.font='10px IBM Plex Mono';ctx.fillStyle='#6B7A73';
+  labels.forEach((l,i)=>{ctx.textAlign='center';ctx.fillText(l,pad+gw*i+gw/2,h-4)});
+  series.forEach((s,si)=>{s.v.forEach((v,i)=>{const bh=(h-pad-14)*(v/mx);const bw=Math.min(16,gw/series.length-4);
+    const x=pad+gw*i+gw/2+(si-series.length/2)*(bw+3)+1.5;ctx.fillStyle=s.c;
+    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(x,h-14-bh,bw,bh,3);ctx.fill()}else ctx.fillRect(x,h-14-bh,bw,bh)})})}
+function lineChart(cv,vals){if(!cv)return;const{ctx,w,h}=prepCanvas(cv);if(vals.length<2){ctx.font='11px Public Sans';
+    ctx.fillStyle='#6B7A73';ctx.fillText('Save at least two snapshots to see the trend',10,h/2);return}
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  ctx.strokeStyle='#A9861F';ctx.lineWidth=2.5;ctx.beginPath();
+  vals.forEach((v,i)=>{const x=10+(w-20)*i/(vals.length-1),y=h-14-(h-28)*(v-mn)/rg;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
+
+/* ================= KIDS & ALLOWANCE ================= */
+const JARS={spend:{ic:'🛒',name:'Spend'},save:{ic:'🏦',name:'Save'},give:{ic:'🤲',name:'Give'}};
+function kids(){return Object.entries(data.kids||{}).map(([id,k])=>({id,...k}))}
+function kidTxAll(kid,jar){return Object.entries(data.kidTx||{}).map(([id,t])=>({id,...t}))
+  .filter(t=>(!kid||t.kid===kid)&&(!jar||t.jar===jar)).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.id.localeCompare(a.id))}
+function jarBal(kid,jar){return kidTxAll(kid,jar).reduce((s,t)=>s+t.amt,0)}
+function kidTotal(kid){return ['spend','save','give'].reduce((s,j)=>s+jarBal(kid,j),0)}
+
+function renderKids(){const ks=kids();
+  $('#kidsIntro').textContent=ks.length?'Tap a jar to spend or add. Tap "Pay allowance" on payday.':'';
+  $('#kidList').innerHTML=ks.map(k=>{
+    const jarsHTML=['spend','save','give'].map(j=>{const b=jarBal(k.id,j);
+      return '<button class="statc" style="text-align:left;padding:10px" onclick="openJar(\''+k.id+'\',\''+j+'\')">'+
+        '<div class="eyebrow">'+JARS[j].ic+' '+JARS[j].name+'</div><div class="mono" style="font-weight:600;font-size:1.05rem">'+fmt(b)+'</div></button>'}).join('');
+    return '<div class="card" style="margin:0 0 12px;background:#F7F9F6">'+
+      '<div class="row" style="margin-bottom:10px"><b style="font-family:\'Zilla Slab\';font-size:1.05rem;flex:1">'+esc(k.name)+'</b>'+
+      '<span class="mono muted">'+fmt(kidTotal(k.id))+' total</span>'+
+      '<button class="btn ghost sm" onclick="openKidForm(\''+k.id+'\')">✎</button></div>'+
+      '<div class="grid2" style="grid-template-columns:1fr 1fr 1fr;gap:8px">'+jarsHTML+'</div>'+
+      '<button class="btn brass sm" style="width:100%;margin-top:10px" onclick="payAllowance(\''+k.id+'\')">💵 Pay '+esc(k.name)+'\'s allowance ('+fmt(k.rate||0)+')</button>'+
+      '</div>'}).join('')||'<div class="empty">Add your kids to give each one Spend, Save &amp; Give jars — a simple way to teach money early.</div>'}
+
+let kidId=null;
+function openKidForm(id){kidId=id||null;const k=id?data.kids[id]:null;
+  $('#kidFormTitle').textContent=k?'Edit '+esc(k.name):'Add child';
+  $('#kfName').value=k?.name||'';$('#kfRate').value=k?.rate?(k.rate/100):'';$('#kfFreq').value=k?.freq||7;
+  $('#kfSpend').value=k?.split?.spend??50;$('#kfSave').value=k?.split?.save??40;$('#kfGive').value=k?.split?.give??10;
+  $('#kfEnv').innerHTML='<option value="">— don\'t deduct —</option>'+envs().map(e=>'<option value="'+e.id+'"'+(k?.env===e.id?' selected':'')+'>'+esc(e.name)+'</option>').join('');
+  $('#kfDelete').style.display=k?'block':'none';$('#kfSplitWarn').textContent='';openSheet('shKid')}
+function saveKid(){const name=$('#kfName').value.trim();if(!name)return toast('Name the child');
+  const sp=+$('#kfSpend').value||0,sv=+$('#kfSave').value||0,gv=+$('#kfGive').value||0;
+  if(sp+sv+gv!==100){$('#kfSplitWarn').innerHTML='<span class="neg-t">Split must add up to 100% (now '+(sp+sv+gv)+'%)</span>';return}
+  put('kids/'+(kidId||uid()),{name,rate:toC($('#kfRate').value),freq:+$('#kfFreq').value||7,split:{spend:sp,save:sv,give:gv},env:$('#kfEnv').value||null});
+  closeSheet('shKid');toast(name+' saved')}
+function deleteKid(){if(kidId&&confirm('Remove this child and their jar history?')){
+  Object.keys(data.kidTx||{}).forEach(id=>{if(data.kidTx[id].kid===kidId)put('kidTx/'+id,null)});
+  put('kids/'+kidId,null);closeSheet('shKid');toast('Removed')}}
+function payAllowance(id){const k=data.kids[id];if(!k)return;const rate=k.rate||0;if(!rate)return toast('Set an allowance amount first');
+  if(!confirm('Pay '+k.name+' '+fmt(rate)+'?\nSpend '+fmt(Math.round(rate*k.split.spend/100))+' · Save '+fmt(Math.round(rate*k.split.save/100))+' · Give '+fmt(Math.round(rate*k.split.give/100))))return;
+  const d=today();let total=0;
+  ['spend','save','give'].forEach(j=>{const amt=Math.round(rate*k.split[j]/100);total+=amt;
+    put('kidTx/'+uid(),{kid:id,jar:j,amt,date:d,kind:'allowance',note:'Allowance'})});
+  if(k.env)put('tx/'+uid(),{kind:'exp',amt:total,env:k.env,payee:k.name+"'s allowance",date:d,who:cfg.member,note:'Allowance'});
+  toast(k.name+' paid '+fmt(total))}
+
+let jarKid=null,jarJar=null,jarAct='spend';
+function openJar(kid,jar){jarKid=kid;jarJar=jar;jarAct='spend';const k=data.kids[kid];
+  $('#jarTitle').textContent=esc(k.name)+' · '+JARS[jar].ic+' '+JARS[jar].name+' — '+fmt(jarBal(kid,jar));
+  $('#jarAmt').value='';$('#jarNote').value='';setJarAct('spend');
+  $('#jarHist').innerHTML=kidTxAll(kid,jar).slice(0,20).map(t=>'<div class="kv"><span>'+(t.amt<0?'−':'+')+' '+esc(t.note||t.kind)+' · '+dShort(t.date)+'</span><b>'+fmt(Math.abs(t.amt))+'</b></div>').join('')||'<div class="empty">No activity yet.</div>';
+  openSheet('shJar')}
+function setJarAct(a){jarAct=a;document.querySelectorAll('#jarSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===a))}
+function saveJar(){const amt=toC($('#jarAmt').value);if(!amt)return toast('Enter an amount');
+  const signed=jarAct==='spend'?-Math.abs(amt):Math.abs(amt);
+  if(jarAct==='spend'&&jarBal(jarKid,jarJar)+signed<0&&!confirm('That\'s more than the jar holds. Allow it?'))return;
+  put('kidTx/'+uid(),{kid:jarKid,jar:jarJar,amt:signed,date:today(),kind:jarAct,note:$('#jarNote').value.trim()||(jarAct==='spend'?'Spent':'Added')});
+  closeSheet('shJar');toast('Updated')}
+
+/* ================= GIVING & TITHE ================= */
+function giveEnvId(){ // ensure a giving envelope exists
+  if(data.settings.giveEnv&&data.env[data.settings.giveEnv])return data.settings.giveEnv;
+  const found=envs().find(e=>/giv|tith|church|offering/i.test(e.name));
+  if(found){put('settings/giveEnv',found.id);return found.id}
+  return null}
+function ensureGiveEnv(){let id=giveEnvId();if(id)return id;
+  id=uid();put('env/'+id,{name:'Giving',kind:'spend',roll:true});put('settings/giveEnv',id);return id}
+function giveYTD(){const y=new Date().getFullYear()+'';const g=giveEnvId();if(!g)return 0;
+  return Object.values(data.tx||{}).filter(t=>t.kind==='exp'&&t.env===g&&(t.date||'').startsWith(y)).reduce((s,t)=>s+t.amt,0)}
+function saveGivePct(v){put('settings/tithePct',parseFloat(v)||0)}
+function renderGive(){const g=giveEnvId();const pct=data.settings.tithePct??10;
+  const ytd=giveYTD();$('#giveYTD').textContent=fmt0(ytd);
+  $('#giveYTDsub').textContent=new Date().getFullYear()+' · keep the receipt trail for taxes';
+  const perPay=Math.round((data.settings.income||0)*pct/100);
+  $('#giveTarget').textContent=fmt(perPay)+' ('+pct+'%)';
+  const p=curP();$('#giveThis').textContent=g?fmt(Object.values(data.tx||{}).filter(t=>t.kind==='exp'&&t.env===g&&pidOf(t.date)===p).reduce((s,t)=>s+t.amt,0)):'$0.00';
+  $('#giveAvail').textContent=g?fmt(avail(g,p)):'no envelope yet';
+  $('#givePct').value=pct;
+  const log=g?Object.entries(data.tx||{}).map(([id,t])=>({id,...t})).filter(t=>t.kind==='exp'&&t.env===g).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,25):[];
+  $('#giveLog').innerHTML=log.length?log.map(t=>txRow(t)).join(''):'<div class="empty">No giving logged yet. Tap "Log a gift" to start the record.</div>'}
+function openGift(){ensureGiveEnv();$('#giftAmt').value='';$('#giftTo').value='';$('#giftDate').value=today();fillWho('#giftWho');openSheet('shGift')}
+function saveGift(){const amt=toC($('#giftAmt').value);if(!amt)return toast('Enter an amount');
+  put('tx/'+uid(),{kind:'exp',amt,env:ensureGiveEnv(),payee:$('#giftTo').value.trim()||'Giving',date:$('#giftDate').value||today(),who:$('#giftWho').value||cfg.member,note:'Gift'});
+  closeSheet('shGift');toast('Gift logged — thank you');go('give')}
+
+/* ================= FINANCIAL ROADMAP ================= */
+function monthlyNeed(){if(data.settings.monthlyExp)return data.settings.monthlyExp;
+  const billsMo=bills().reduce((s,b)=>s+b.amt,0);
+  const envMo=envs().filter(e=>e.kind!=='goal').reduce((s,e)=>s+alloc(e.id,curP()),0)*payPerMonth();
+  return Math.round(billsMo+envMo)}
+function emergAvail(){const id=data.settings.emergencyEnv;return id&&data.env[id]?avail(id,curP()):0}
+function runwayMonths(){const m=monthlyNeed();return m?emergAvail()/m:0}
+const ROAD=[
+  {id:'s1',t:'Starter emergency fund',d:'One paycheck set aside for surprises',auto:d=>emergAvail()>=(data.settings.income||100000)},
+  {id:'s2',t:'Crush consumer debt',d:'Every non-mortgage debt to zero',auto:d=>debts().length>0&&debts().every(x=>x.bal<=0)},
+  {id:'s3',t:'Full emergency fund',d:'3–6 months of expenses banked',auto:d=>{const t=emTargetC();return t>0&&emergAvail()>=t}},
+  {id:'s4',t:'Give consistently',d:'Giving on your target this year',auto:d=>giveYTD()>0},
+  {id:'s5',t:'Invest 15% — TSP + Roth IRAs',d:'Retirement contributions on autopilot',auto:null},
+  {id:'s6',t:'Fund the kids’ futures',d:'UTMA / custodial accounts growing',auto:null},
+  {id:'s7',t:'Retirement & transition ready',d:'Runway for the jump to your next chapter',auto:null},
+];
+function stepDone(s){if(s.auto)return s.auto();return !!(data.settings.road&&data.settings.road[s.id])}
+function toggleStep(id){const s=ROAD.find(x=>x.id===id);
+  if(s.auto){ // auto steps: take you where the work happens
+    if(id==='s1'||id==='s3')pickEmergency();
+    else if(id==='s2')go('debts');
+    else if(id==='s4')go('give');
+    return}
+  const r=Object.assign({},data.settings.road||{});r[id]=!r[id];put('settings/road',r)}
+function renderRoad(){const next=ROAD.find(s=>!stepDone(s));
+  $('#roadNext').textContent=next?next.t:'🎉 Every milestone hit';
+  $('#roadNextSub').textContent=next?next.d:'You\'ve built the whole staircase. Keep stacking.';
+  const tgtC=emTargetC(),av=emergAvail(),need=monthlyNeed();
+  const rw=runwayMonths(),tgtMo=data.settings.emMonths||3;
+  if(!data.settings.emergencyEnv){$('#roadRunway').textContent='—';$('#roadRunwaySub').textContent='pick your emergency fund below'}
+  else{const fname=esc(data.env[data.settings.emergencyEnv]?.name||'fund');
+    if(need>0&&!data.settings.emTarget){$('#roadRunway').textContent=rw.toFixed(1)+' mo';
+      $('#roadRunwaySub').textContent=fname+' · of '+tgtMo+' mo target · '+fmt0(av)+' saved'}
+    else{$('#roadRunway').textContent=fmt0(av);
+      $('#roadRunwaySub').textContent=fname+(tgtC?(' · of '+fmt0(tgtC)+' target'):' · set a target in "Set emergency fund"')}}
+  const pct=tgtC?Math.min(100,av/tgtC*100):0;
+  $('#roadRunwayBar').className=pct>=100?'':pct>=33?'warn':'over';
+  $('#roadRunwayBar').style.width=pct+'%';
+  $('#roadMonthlyBtn').textContent=fmt0(monthlyNeed());
+  $('#roadSteps').innerHTML=ROAD.map((s,i)=>{const done=stepDone(s);
+    return '<button class="tx" onclick="toggleStep(\''+s.id+'\')" style="width:100%">'+
+      '<span class="iconb" style="background:'+(done?'#DCEBE0':'#EEF1EC')+';color:'+(done?'#2C5C49':'#9aa89f')+'">'+(done?'✓':(i+1))+'</span>'+
+      '<span class="mid"><span class="p"'+(done?' style="color:var(--ink3)"':'')+'>'+s.t+'</span><br><span class="s">'+s.d+(s.auto?' · auto':'')+'</span></span>'+
+      (done?'<span class="a pos-t">done</span>':'')+'</button>'}).join('')}
+function emTargetC(){return data.settings.emTarget||monthlyNeed()*(data.settings.emMonths||3)}
+function pickEmergency(){const gl=envs().filter(e=>e.kind==='goal');
+  $('#emGoal').innerHTML='<option value="">— none —</option>'+gl.map(e=>'<option value="'+e.id+'"'+(data.settings.emergencyEnv===e.id?' selected':'')+'>'+esc(e.name)+'</option>').join('')+
+    '<option value="_new">＋ Create "Emergency Fund" goal for me</option>';
+  $('#emMonths').value=data.settings.emMonths||3;
+  $('#emTarget').value=data.settings.emTarget?(data.settings.emTarget/100):'';
+  openSheet('shEmerg')}
+function saveEmergency(){let v=$('#emGoal').value;
+  put('settings/emMonths',+$('#emMonths').value||3);
+  put('settings/emTarget',toC($('#emTarget').value)||null);
+  if(v==='_new'){const target=emTargetC();
+    if(!target){toast('Type a target amount above — with no bills or envelopes yet, I can\'t auto-compute one');
+      $('#emTarget').focus();return}
+    const id=uid();
+    put('env/'+id,{name:'Emergency Fund',kind:'goal',roll:true,startP:curP(),target,targetDate:null});v=id;
+    toast('Emergency Fund created — '+fmt0(target)+' target. Fund it on the Budget tab')}
+  put('settings/emergencyEnv',v||null);closeSheet('shEmerg')}
+function editMonthly(){const v=prompt('Your monthly essentials (bills + core spending). Leave blank to auto-estimate.',data.settings.monthlyExp?(data.settings.monthlyExp/100):'');
+  if(v===null)return;put('settings/monthlyExp',v.trim()?toC(v):0);toast('Updated')}
+
+const TAGS={cash:'Cash / bank',retire:'Retirement',invest:'Investments',property:'Property',other:'Other'};
+function renderWorth(){const t=nwTotal();$('#nwTotal').textContent=fmt0(t);$('#nwTotal').className='big '+(t>=0?'pos-t':'neg-t');
+  const snaps=Object.values(data.snaps||{}).sort((a,b)=>a.d.localeCompare(b.d));
+  const last=snaps[snaps.length-2];
+  const contribMo=accts().reduce((s,a)=>s+(a.contrib||0),0);
+  $('#nwSub').textContent=(last?('was '+fmt0(last.t)+' on '+dShort(last.d)+' · '):'')+(contribMo?fmt0(contribMo)+'/mo going in':'add monthly contributions to project growth');
+  // categories
+  const cats={};accts().forEach(a=>{if(a.type==='liab')return;const k=a.tag||'other';cats[k]=(cats[k]||0)+a.bal});
+  const liab=accts().filter(a=>a.type==='liab').reduce((s,a)=>s+a.bal,0);
+  let catHTML=Object.entries(cats).map(([k,v])=>'<div class="kv"><span>'+(TAGS[k]||k)+'</span><b>'+fmt0(v)+'</b></div>').join('');
+  if(liab)catHTML+='<div class="kv"><span>Liabilities</span><b class="neg-t">−'+fmt0(liab)+'</b></div>';
+  $('#nwCats').innerHTML=catHTML||'<div class="empty">Tag accounts to see the breakdown.</div>';
+  // goal
+  renderNWGoal();
+  const A=accts();const row=a=>'<button class="tx" onclick="openAcctForm(\''+a.id+'\')"><span class="mid"><span class="p">'+esc(a.name)+'</span><br><span class="s">'+(TAGS[a.tag]||'')+(a.contrib?' · +'+fmt0(a.contrib)+'/mo':'')+'</span></span><span class="a">'+fmt0(a.bal)+'</span></button>';
+  $('#assetList').innerHTML=A.filter(a=>a.type!=='liab').map(row).join('')||'<div class="empty">Checking, savings, TSP, Vanguard, home…</div>';
+  $('#liabList').innerHTML=A.filter(a=>a.type==='liab').map(row).join('')||'<div class="empty">Mortgage, loans, cards…</div>';
+  lineChart($('#nwChart'),snaps.map(s=>s.t));}
+function renderNWGoal(){const tgt=data.settings.nwTarget||0;const b=$('#nwGoalBody');
+  if(!tgt){b.innerHTML='<div class="empty">Set a target — say your net worth goal by retirement — and track the climb.</div>';return}
+  const now=nwTotal();const pct=Math.max(0,Math.min(1,now/tgt));
+  let sub='';if(data.settings.nwDate){const mo=monthsBetween(new Date(),new Date(data.settings.nwDate+'-01'));
+    if(mo>0){const need=Math.max(0,(tgt-now)/mo);sub='Grow <b class="mono">'+fmt0(need)+'/mo</b> to hit '+fmt0(tgt)+' by '+new Date(data.settings.nwDate+'-01').toLocaleDateString('en-US',{month:'short',year:'numeric'})}}
+  b.innerHTML='<div class="row" style="align-items:baseline;gap:8px"><div class="big">'+Math.round(pct*100)+'%</div><div class="muted">of '+fmt0(tgt)+'</div></div>'+
+    '<div class="bar" style="margin-top:8px"><i class="goal" style="width:'+(pct*100)+'%"></i></div>'+(sub?'<div class="muted" style="margin-top:8px">'+sub+'</div>':'')}
+function openNWGoal(){$('#nwgTarget').value=(data.settings.nwTarget||0)/100||'';$('#nwgDate').value=data.settings.nwDate||'';openSheet('shNWGoal')}
+function saveNWGoal(){put('settings/nwTarget',toC($('#nwgTarget').value));put('settings/nwDate',$('#nwgDate').value||null);closeSheet('shNWGoal');toast('Goal saved')}
+function monthsBetween(a,b){return (b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())}
+
+/* ================= TRANSITION RUNWAY ================= */
+function saveTrans(){put('settings/retDate',$('#trDate').value||null);put('settings/trMonths',+$('#trMonths').value||6);
+  put('settings/retIncome',toC($('#trIncome').value));
+  let v=$('#trEnv').value;
+  if(v==='_new'){const id=uid();const target=monthlyNeed()*(+$('#trMonths').value||6);
+    put('env/'+id,{name:'Transition Runway',kind:'goal',roll:true,startP:curP(),target:target||null,targetDate:data.settings.retDate?(data.settings.retDate+'-01'):null});v=id;
+    toast('Transition Runway goal created — fund it on the Budget tab')}
+  put('settings/transEnv',v||null)}
+function renderTrans(){const s=data.settings;
+  $('#trDate').value=s.retDate||'';$('#trMonths').value=s.trMonths||6;
+  $('#trIncome').value=(s.retIncome||0)/100||'';
+  $('#trEnv').innerHTML='<option value="">— pick a goal —</option>'+envs().filter(e=>e.kind==='goal').map(e=>'<option value="'+e.id+'"'+(s.transEnv===e.id?' selected':'')+'>'+esc(e.name)+'</option>').join('')+
+    '<option value="_new">＋ Create "Transition Runway" goal for me</option>';
+  // countdown
+  if(s.retDate){const rd=new Date(s.retDate+'-01');const mo=monthsBetween(new Date(),rd);
+    $('#transCount').textContent=mo>0?(Math.floor(mo/12)+'y '+(mo%12)+'m'):'You made it 🎉';
+    $('#transDateSub').textContent=mo>0?('Target: '+rd.toLocaleDateString('en-US',{month:'long',year:'numeric'})):'Retirement date reached';}
+  else{$('#transCount').textContent='Set a date';$('#transDateSub').textContent='Pick your target retirement month above'}
+  const need=monthlyNeed(),months=s.trMonths||6;const target=need*months;
+  const saved=s.transEnv&&data.env[s.transEnv]?avail(s.transEnv,curP()):0;
+  $('#trSaved').textContent=fmt0(saved);$('#trTargetSub').textContent='of '+fmt0(target)+' runway ('+months+' mo)';
+  $('#trBar').className=saved>=target?'goal':saved>=target/2?'warn':'over';
+  $('#trBar').style.width=Math.min(100,target?saved/target*100:0)+'%';
+  const paychecks=s.retDate?Math.max(0,pidOf(s.retDate+'-01')-curP()):0;
+  $('#trPerPay').innerHTML=paychecks>0?fmt0(Math.max(0,(target-saved)/paychecks)):
+    (s.retDate?'—':'<button class="btn sec sm" onclick="trFocus(\'trDate\')">Set a date</button>');
+  const gap=Math.max(0,need-(s.retIncome||0));
+  if(!s.retIncome)$('#trGap').innerHTML='<button class="btn sec sm" onclick="trFocus(\'trIncome\')">Enter income</button>';
+  else $('#trGap').textContent=gap>0?fmt0(gap)+'/mo':'covered ✓';
+  $('#trGapNote').innerHTML=gap>0&&s.retIncome?
+    'After retirement your income leaves a <b>'+fmt0(gap)+'/mo</b> gap. That\'s the monthly nut your trading income (or the runway fund) needs to cover.':
+    (s.retIncome?'Your expected income covers your monthly expenses — the runway fund is pure cushion for the ramp-up.':'Tap "Enter income" or fill the income field above to see the monthly gap.')}
+function trFocus(id){const el=$('#'+id);el.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>{el.focus();try{el.showPicker&&el.showPicker()}catch(e){}},350)}
+
+/* ================= CASHFLOW CALENDAR ================= */
+let calM=0;
+function shiftCal(d){calM+=d;$('#calDetail').style.display='none';renderCal()}
+function renderCal(){const base=new Date();const view=new Date(base.getFullYear(),base.getMonth()+calM,1);
+  const y=view.getFullYear(),m=view.getMonth();
+  $('#calLbl').textContent=view.toLocaleDateString('en-US',{month:'long',year:'numeric'})+(calM===0?' · now':'');
+  const first=new Date(y,m,1).getDay(),dim=daysInMonth(view);
+  // spend per day + bill per day
+  const spend={},todayStr=today();
+  for(const t of Object.values(data.tx||{})){if(t.kind!=='exp')continue;const d=new Date(t.date+'T00:00:00');
+    if(d.getFullYear()===y&&d.getMonth()===m)spend[d.getDate()]=(spend[d.getDate()]||0)+t.amt}
+  const paydays=new Set();for(let p=curP()-30;p<curP()+30;p++){const d=pStart(p);if(d.getFullYear()===y&&d.getMonth()===m)paydays.add(d.getDate())}
+  let html='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">';
+  ['S','M','T','W','T','F','S'].forEach(d=>html+='<div style="font-size:.6rem;font-weight:700;color:var(--ink3);padding:4px 0">'+d+'</div>');
+  for(let i=0;i<first;i++)html+='<div></div>';
+  for(let day=1;day<=dim;day++){const dueBills=bills().filter(b=>Math.min(b.day,dim)===day);
+    const isToday=(y===base.getFullYear()&&m===base.getMonth()&&day===base.getDate());
+    const sp=spend[day]||0,pay=paydays.has(day);
+    const ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const notes=data.calnotes?.[ds]||{};const mids=Object.keys(data.members||{});
+    const myNote=mids[0]&&notes[mids[0]],herNote=mids.slice(1).some(id=>notes[id]);
+    html+='<button onclick="calDay('+y+','+m+','+day+')" style="aspect-ratio:1;border-radius:9px;border:1.5px solid '+(isToday?'var(--green2)':'transparent')+';background:'+(pay?'#E1F0E5':'#F5F7F3')+';display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px 2px;position:relative">'+
+      '<span style="font-size:.72rem;font-weight:'+(isToday?'700':'500')+'">'+day+'</span>'+
+      '<span style="display:flex;gap:2px;margin-top:2px">'+(pay?'<span style="width:5px;height:5px;border-radius:50%;background:#2C5C49"></span>':'')+(dueBills.length?'<span style="width:5px;height:5px;border-radius:50%;background:#B3402F"></span>':'')+'</span>'+
+      (sp?'<span class="mono" style="font-size:.52rem;color:var(--ink3);margin-top:auto">'+fmt0(sp)+'</span>':'')+
+      (myNote?'<span style="position:absolute;left:4px;bottom:4px;width:5px;height:5px;border-radius:50%;background:#A9861F"></span>':'')+
+      (herNote?'<span style="position:absolute;right:4px;bottom:4px;width:5px;height:5px;border-radius:50%;background:#D1618F"></span>':'')+
+      '</button>'}
+  html+='</div>';$('#calGrid').innerHTML=html;
+  // month summary
+  const mBills=bills().reduce((s,b)=>s+b.amt,0);}
+function calDay(y,m,day){const dateStr=y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+  window._calSel={y,m,day};
+  const dueBills=bills().filter(b=>Math.min(b.day,daysInMonth(new Date(y,m,1)))===day);
+  const txs=txList().filter(t=>t.date===dateStr);
+  $('#calDetailLbl').textContent=new Date(y,m,day).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  let h='';
+  if(dueBills.length)h+='<div class="eyebrow" style="margin:4px 0 6px">Bills due</div>'+dueBills.map(b=>'<div class="kv"><span>📄 '+esc(b.name)+'</span><b>'+fmt(b.amt)+'</b></div>').join('');
+  if(txs.length)h+='<div class="eyebrow" style="margin:12px 0 6px">Logged</div>'+txs.map(t=>txRow(t)).join('');
+  // notes
+  const notes=data.calnotes?.[dateStr]||{};const mids=Object.keys(data.members||{});
+  const others=Object.entries(notes).filter(([id])=>id!==cfg.member&&data.members[id]);
+  if(others.length)h+='<div class="eyebrow" style="margin:12px 0 6px">Notes</div>'+others.map(([id,txt])=>
+    '<div class="kv"><span>'+whoBadge(id)+' '+esc(data.members[id].name)+'</span></div><div class="muted" style="margin:-4px 0 8px">'+esc(txt)+'</div>').join('');
+  h+='<div class="eyebrow" style="margin:12px 0 6px">Your note</div>'+
+    '<textarea class="in" id="calNoteIn" rows="2" placeholder="Anniversary dinner, TDY starts, car due for oil…">'+esc(notes[cfg.member]||'')+'</textarea>'+
+    '<button class="btn sec sm" style="margin-top:8px" onclick="saveCalNote(\''+dateStr+'\')">Save note</button>';
+  if(!dueBills.length&&!txs.length&&!others.length&&!notes[cfg.member])h='<div class="empty" style="padding:8px">Nothing logged this day.</div>'+h;
+  $('#calDetailBody').innerHTML=h;$('#calDetail').style.display='block';$('#calDetail').scrollIntoView({behavior:'smooth',block:'nearest'})}
+function saveCalNote(dateStr){const v=$('#calNoteIn').value.trim();
+  put('calnotes/'+dateStr+'/'+cfg.member,v||null);
+  toast(v?'Note saved':'Note removed');
+  const s=window._calSel;if(s)calDay(s.y,s.m,s.day)}
+
+/* ================= SUBSCRIPTION AUDIT ================= */
+function renderSubs(){const subs=bills().filter(b=>b.sub);
+  const mo=subs.reduce((s,b)=>s+b.amt,0);
+  $('#subMo').textContent=fmt0(mo)+'/mo';$('#subYr').textContent=fmt0(mo*12)+' a year across '+subs.length+' subscription'+(subs.length===1?'':'s');
+  $('#subList').innerHTML=subs.sort((a,b)=>b.amt-a.amt).map(b=>'<button class="tx" onclick="openBillForm(\''+b.id+'\')">'+
+    '<span class="iconb">🔁</span><span class="mid"><span class="p">'+esc(b.name)+'</span><br><span class="s">'+fmt0(b.amt*12)+' / year · due day '+b.day+'</span></span>'+
+    '<span class="a">'+fmt(b.amt)+'</span></button>').join('')||'<div class="empty">No subscriptions flagged yet. Edit any bill and mark it as a subscription.</div>'}
+
+/* ================= READINESS VAULT ================= */
+const VAULT_SUGGEST=['SGLI coverage & beneficiaries','SBP election documented','Will (both spouses)','Power of attorney','Medical directives','Emergency contacts card','DD-214 location (on retirement)','TSP beneficiaries','Bank & Vanguard beneficiaries','Insurance policies list','Password manager access plan'];
+function vault(){return Object.entries(data.vault||{}).map(([id,v])=>({id,...v}))}
+let vaultId=null;
+function renderVault(){const vs=vault();const ic={done:'✅',review:'🟡',missing:'🔴'};
+  $('#vaultList').innerHTML=vs.length?vs.sort((a,b)=>({missing:0,review:1,done:2}[a.status]-{missing:0,review:1,done:2}[b.status]))
+    .map(v=>'<button class="tx" onclick="openVaultForm(\''+v.id+'\')"><span class="iconb">'+(ic[v.status]||'•')+'</span>'+
+    '<span class="mid"><span class="p">'+esc(v.name)+'</span><br><span class="s">'+esc(v.note||'')+(v.date?' · reviewed '+dShort(v.date):'')+'</span></span></button>').join('')
+    :'<div class="empty">Nothing tracked yet — tap a suggestion below or add your own.</div>';
+  const have=new Set(vs.map(v=>v.name.toLowerCase()));
+  $('#vaultSuggest').innerHTML=VAULT_SUGGEST.filter(s=>!have.has(s.toLowerCase()))
+    .map(s=>'<button class="c" onclick="quickVault(\''+esc(s).replace(/'/g,"\\'")+'\')">＋ '+esc(s)+'</button>').join('')||'<span class="muted">All suggestions tracked — outstanding.</span>'}
+function quickVault(name){put('vault/'+uid(),{name,status:'review',note:'',date:null});toast('Added — set its status')}
+function openVaultForm(id){vaultId=id||null;const v=id?data.vault[id]:null;
+  $('#vaultFormTitle').textContent=v?'Edit item':'Readiness item';
+  $('#vfName').value=v?.name||'';$('#vfStatus').value=v?.status||'review';$('#vfNote').value=v?.note||'';
+  $('#vfDelete').style.display=v?'block':'none';openSheet('shVault')}
+function saveVault(){const name=$('#vfName').value.trim();if(!name)return toast('Name the item');
+  put('vault/'+(vaultId||uid()),{name,status:$('#vfStatus').value,note:$('#vfNote').value.trim(),date:today()});
+  closeSheet('shVault');toast('Saved')}
+function deleteVault(){if(vaultId&&confirm('Delete this item?')){put('vault/'+vaultId,null);closeSheet('shVault')}}
+
+/* ================= ANNUAL PLANNER ================= */
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function annuals(){return Object.entries(data.annuals||{}).map(([id,a])=>({id,...a}))}
+function nextHit(a){const n=new Date();let y=n.getFullYear();if(a.month-1<n.getMonth()||(a.month-1===n.getMonth()&&n.getDate()>1))y++;return new Date(y,a.month-1,1)}
+function annPerPaycheck(a){const hits=nextHit(a);const paychecks=Math.max(1,pidOf(hits.toISOString().slice(0,10))-curP());return Math.ceil(a.amt/paychecks)}
+let annId=null;
+function renderAnnual(){const as=annuals().map(a=>({...a,hit:nextHit(a)})).sort((a,b)=>a.hit-b.hit);
+  const yr=as.reduce((s,a)=>s+a.amt,0);
+  $('#annTotal').textContent=fmt0(yr);
+  $('#annPerPay').textContent=fmt0(as.reduce((s,a)=>s+annPerPaycheck(a),0));
+  $('#annList').innerHTML=as.length?as.map(a=>{const linked=a.env&&data.env[a.env];
+    return '<button class="tx" onclick="openAnnualForm(\''+a.id+'\')"><span class="iconb">📅</span>'+
+    '<span class="mid"><span class="p">'+esc(a.name)+'</span><br><span class="s">'+MONTHS[a.month-1]+' · set aside <b class="mono">'+fmt(annPerPaycheck(a))+'</b>/paycheck'+(linked?' · fund: '+esc(linked.name):'')+'</span></span>'+
+    '<span class="a">'+fmt0(a.amt)+'</span></button>'+
+    (!linked?'<button class="btn sec sm" style="margin:0 0 10px 45px" onclick="annMakeFund(\''+a.id+'\')">Create sinking fund →</button>':'')}).join('')
+    :'<div class="empty">Add the yearly hits — insurance premiums, registration, Christmas, birthdays — and they stop being surprises.</div>'}
+function openAnnualForm(id){annId=id||null;const a=id?data.annuals[id]:null;
+  $('#annFormTitle').textContent=a?'Edit expense':'Yearly expense';
+  $('#anName').value=a?.name||'';$('#anAmt').value=a?.amt?(a.amt/100):'';
+  $('#anMonth').innerHTML=MONTHS.map((m,i)=>'<option value="'+(i+1)+'"'+((a?.month||new Date().getMonth()+1)===i+1?' selected':'')+'>'+m+'</option>').join('');
+  $('#anDelete').style.display=a?'block':'none';openSheet('shAnnual')}
+function saveAnnual(){const name=$('#anName').value.trim(),amt=toC($('#anAmt').value);
+  if(!name||!amt)return toast('Name and amount required');
+  const prev=annId?data.annuals[annId]:null;
+  put('annuals/'+(annId||uid()),{name,amt,month:+$('#anMonth').value,env:prev?.env||null});
+  closeSheet('shAnnual');toast('Saved')}
+function deleteAnnual(){if(annId&&confirm('Delete this expense?')){put('annuals/'+annId,null);closeSheet('shAnnual')}}
+function annMakeFund(id){const a=data.annuals[id];if(!a)return;
+  const envId=uid();const hit=nextHit(a);
+  put('env/'+envId,{name:a.name,kind:'goal',roll:true,def:annPerPaycheck(a),startP:curP(),target:a.amt,targetDate:hit.toISOString().slice(0,10)});
+  put('annuals/'+id+'/env',envId);
+  toast('Sinking fund created — auto-assigning '+fmt(annPerPaycheck(a))+'/paycheck')}
+
+/* ================= TRADING TANK ================= */
+function tankLog(){return Object.entries(data.tank||{}).map(([id,t])=>({id,...t})).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))}
+function tankBal(){return tankLog().reduce((s,t)=>s+t.amt,0)}
+let tankMode='in';
+function renderTank(){const bal=tankBal();$('#tankBal').textContent=fmt(bal);
+  const mo=ym(new Date());const dep=tankLog().filter(t=>t.amt>0&&t.date.startsWith(mo)).reduce((s,t)=>s+t.amt,0);
+  $('#tankSub').textContent=fmt0(dep)+' deposited this month';
+  $('#tankLog').innerHTML=tankLog().slice(0,30).map(t=>'<button class="tx" onclick="tankTap(\''+t.id+'\')">'+
+    '<span class="iconb">'+(t.amt>0?'📈':'💵')+'</span><span class="mid"><span class="p">'+esc(t.note||(t.amt>0?'Deposit':'Sweep to budget'))+'</span><br><span class="s">'+dShort(t.date)+'</span></span>'+
+    '<span class="a '+(t.amt>0?'pos-t':'')+'">'+(t.amt>0?'+':'')+fmt(t.amt)+'</span></button>').join('')||'<div class="empty">Tank\'s empty. When funded-account withdrawals clear the bank, deposit them here.</div>'}
+function tankTap(id){const t=data.tank[id];if(t&&confirm('Delete this tank entry? ('+fmt(t.amt)+')'))put('tank/'+id,null)}
+function openTank(mode){tankMode=mode;
+  $('#tankTitle').textContent=mode==='in'?'📈 Deposit to tank':'→ Sweep to budget';
+  $('#tankGo').textContent=mode==='in'?'Deposit':'Sweep it in';
+  $('#tankSweepNote').style.display=mode==='sweep'?'block':'none';
+  $('#tankAmt').value=mode==='sweep'?(tankBal()>0?(tankBal()/100):''):'';$('#tankNote').value='';openSheet('shTank')}
+function saveTank(){const amt=toC($('#tankAmt').value);if(!amt)return toast('Enter an amount');
+  if(tankMode==='sweep'){if(amt>tankBal()&&!confirm('That\'s more than the tank holds. Sweep anyway?'))return;
+    put('tank/'+uid(),{amt:-amt,date:today(),note:$('#tankNote').value.trim()||'Swept to budget'});
+    put('tx/'+uid(),{kind:'inc',amt,env:null,payee:'Trading income (swept)',date:today(),who:cfg.member,note:$('#tankNote').value.trim()});
+    toast(fmt(amt)+' swept — assign it on the Budget tab')}
+  else{put('tank/'+uid(),{amt,date:today(),note:$('#tankNote').value.trim()});toast('Deposited')}
+  closeSheet('shTank')}
+
+/* ================= LANGUAGE (per device) ================= */
+const I18N={
+ 'g.m':['Good morning','Buenos días'],'g.a':['Good afternoon','Buenas tardes'],'g.e':['Good evening','Buenas noches'],
+ 'g.day':['Day','Día'],'g.of':['of','de'],'g.next':['Next pay','Próximo pago'],
+ 'g.safe':['Safe to spend','Disponible'],'g.onplan':['▲ on plan','▲ según el plan'],
+ 'g.over':['over','excedido'],'g.toassign':['to assign','por asignar'],'g.left':['left','restante'],
+ 'g.dayspay':['days to payday','días hasta el pago'],'g.spent':['Spent this period','Gastado este período'],
+ 'g.todaynext':['Today & next','Hoy y próximo'],'g.today2':['today','hoy'],'g.tomorrow':['tomorrow','mañana'],
+ 'g.thisperiod':['this period','este período'],
+ 'tab.home':['Home','Inicio'],'tab.budget':['Budget','Presupuesto'],'tab.bills':['Bills','Cuentas'],'tab.more':['More','Más'],
+ 'zb.toassign':['To assign','Por asignar'],'zb.job':['Every dollar has a job','Cada dólar tiene un trabajo'],
+ 'zb.assign':['to assign','por asignar'],'zb.over':['over-assigned','asignado de más'],
+ 'tx.spend':['Spend','Gasto'],'tx.income':['Income','Ingreso'],'tx.envelope':['Envelope','Sobre'],
+ 'tx.payee':['Payee / description','Comercio / descripción'],'tx.date':['Date','Fecha'],'tx.who':['Who spent it?','¿Quién lo gastó?'],
+ 'tx.note':['Note (optional)','Nota (opcional)'],'tx.log':['Log it','Registrar'],'tx.scan':['📷 Scan receipt','📷 Escanear recibo'],
+ 'toast.logged':['Logged — synced to the family','Registrado — sincronizado con la familia'],
+ 'toast.income':['Income logged','Ingreso registrado'],'toast.amt':['Enter an amount','Ingresa una cantidad'],
+ 'menu':[['Financial roadmap','Transition runway','Cashflow calendar','Kids & allowance','Giving & tithe','Goals & yearly expenses','Debt payoff','Trading income tank','Net worth','Subscription audit','Reports','Readiness vault','Settings & household'],
+         ['Ruta financiera','Pista de transición','Calendario de flujo','Niños y mesada','Ofrendas y diezmo','Metas y gastos anuales','Pago de deudas','Tanque de trading','Patrimonio neto','Auditoría de suscripciones','Reportes','Bóveda de preparación','Ajustes y hogar']],
+};
+function lang(){return localStorage.getItem('hb5_lang')||'en'}
+function T(k){const e=I18N[k];return e?e[lang()==='es'?1:0]:k}
+function setLang(l){localStorage.setItem('hb5_lang',l);applyLang();renderAll();renderSettings();toast(l==='es'?'Cambiado a español':'Switched to English')}
+function applyLang(){
+  $('#t-home').innerHTML='<span class="ic">🏠</span>'+T('tab.home');
+  $('#t-env').innerHTML='<span class="ic">✉️</span>'+T('tab.budget');
+  $('#t-bills').innerHTML='<span class="ic">📬</span>'+T('tab.bills');
+  $('#t-more').innerHTML='<span class="ic">☰</span>'+T('tab.more');
+  const zbl=document.querySelector('#zerobeam .lbl');if(zbl)zbl.textContent=T('zb.toassign');
+  // tx sheet
+  const segB=document.querySelectorAll('#txSeg button');if(segB[0]){segB[0].textContent=T('tx.spend');segB[1].textContent=T('tx.income')}
+  const map=[['#txEnvWrap span','tx.envelope'],['#shTx label:nth-of-type(2) span','tx.payee']];
+  const lbls=document.querySelectorAll('#shTx label.f > span');
+  if(lbls.length>=5){lbls[0].textContent=T('tx.envelope');lbls[1].textContent=T('tx.payee');lbls[2].textContent=T('tx.date');lbls[3].textContent=T('tx.who');lbls[4].textContent=T('tx.note')}
+  $('#txSave').textContent=T('tx.log');
+  const scanBtn=document.querySelector('#shTx .btn.ghost.sm');if(scanBtn)scanBtn.textContent=T('tx.scan');
+  // more menu
+  const ts=document.querySelectorAll('#v-more .morec .t');const names=I18N['menu'][lang()==='es'?1:0];
+  ts.forEach((el,i)=>{if(names[i])el.textContent=names[i]});
+  document.querySelectorAll('#langEN,#langES').forEach(b=>b.classList.remove('on'));
+  const lb=$(lang()==='es'?'#langES':'#langEN');if(lb)lb.classList.add('on')}
+
+/* ================= SETUP & HELP ================= */
+function renderHelp(){
+  const cycle=isSemi()?'1st & 15th of month':((+data.settings.freq||14)===14?'Every 2 weeks':(+data.settings.freq===7?'Weekly':'Monthly'));
+  $('#helpInfo').innerHTML=
+    '<div class="kv"><span>Sync mode</span><b>'+(cfg.mode==='cloud'?'Firebase (live)':cfg.mode==='local'?'This device only':'Not set up')+'</b></div>'+
+    '<div class="kv"><span>Household code</span><b>'+(cfg.code?('#'+cfg.code):'—')+'</b></div>'+
+    '<div class="kv"><span>Database URL</span><b class="mono" style="font-size:.72rem;max-width:60%;overflow:hidden;text-overflow:ellipsis">'+(cfg.dbUrl?esc(cfg.dbUrl):'—')+'</b></div>'+
+    '<div class="kv"><span>Pay cycle</span><b>'+cycle+'</b></div>'+
+    '<div class="kv"><span>You are</span><b>'+esc(data.members[cfg.member]?.name||'—')+'</b></div>'+
+    (cfg.code?'<button class="btn sec sm" style="margin-top:12px" onclick="copyText(\''+cfg.code+'\',\'Code copied\')">📋 Copy household code</button>':'')+
+    (cfg.dbUrl?'<button class="btn sec sm" style="margin-top:12px;margin-left:8px" onclick="copyText(\''+esc(cfg.dbUrl)+'\',\'URL copied\')">📋 Copy database URL</button>':'');
+}
+function copyText(t,msg){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast(msg||'Copied')).catch(()=>toast('Copy failed — select manually'))}else toast('Copy not supported — select manually')}
+function copyRules(){copyText($('#rulesBlock').textContent,'Rules copied — paste in Firebase')}
+
+/* ================= transaction sheet ================= */
+let txKind='exp',txEnvSel=null;
+function openTx(){txKind='exp';txEnvSel=null;
+  $('#txAmt').value='';$('#txPayee').value='';$('#txNote').value='';$('#txDate').value=today();$('#scanStatus').textContent='';
+  setTxKind('exp');fillWho('#txWho');fillEnvChips();fillPayees();
+  openSheet('shTx');setTimeout(()=>$('#txAmt').focus(),150)}
+function setTxKind(k){txKind=k;document.querySelectorAll('#txSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+  $('#txEnvWrap').querySelector('span').textContent=k==='inc'?'Envelope (optional — boosts it)':'Envelope'}
+function fillWho(sel){const s=$(sel);s.innerHTML=Object.entries(data.members).map(([id,m])=>
+  '<option value="'+id+'"'+(id===cfg.member?' selected':'')+'>'+esc(m.name)+'</option>').join('')||'<option value="">—</option>'}
+function fillEnvChips(){const p=curP();$('#txEnvChips').innerHTML=envs().map(e=>{const av=avail(e.id,p);
+  return '<button class="c'+(txEnvSel===e.id?' on':'')+'" onclick="txEnvSel=\''+e.id+'\';fillEnvChips()">'+esc(e.name)+' <span class="mono" style="opacity:.7">'+fmt0(av)+'</span></button>'}).join('')||
+  '<span class="muted">No envelopes yet — you can still log it.</span>'}
+function fillPayees(){const seen=new Set();$('#payeeList').innerHTML=txList().map(t=>t.payee).filter(p=>p&&!seen.has(p)&&seen.add(p)).slice(0,25).map(p=>'<option value="'+esc(p)+'">').join('')}
+function saveTx(){const amt=toC($('#txAmt').value);if(!amt)return toast(T('toast.amt'));
+  if(txKind==='exp'&&!txEnvSel&&envs().length&&!confirm('No envelope selected — log anyway?'))return;
+  put('tx/'+uid(),{kind:txKind,amt:Math.abs(amt),env:txEnvSel||null,payee:$('#txPayee').value.trim(),
+    date:$('#txDate').value||today(),who:$('#txWho').value||cfg.member,note:$('#txNote').value.trim()});
+  closeSheet('shTx');toast(txKind==='inc'?T('toast.income'):T('toast.logged'))}
+
+/* ---- receipt scan ---- */
+function scanReceipt(){const k=localStorage.getItem('hb4_apikey');
+  if(!k){toast('Add your API key in Settings first');return}
+  $('#receiptFile').click()}
+async function handleReceipt(inp){const f=inp.files[0];inp.value='';if(!f)return;
+  $('#scanStatus').textContent='Reading receipt…';
+  try{const b64=await shrink(f);
+    const key=localStorage.getItem('hb4_apikey');
+    const envNames=envs().map(e=>e.name).join(', ');
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:300,messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+        {type:'text',text:'Read this receipt. Respond with ONLY raw JSON, no markdown: {"payee":string,"date":"YYYY-MM-DD","total":number,"envelope":string} where envelope is the best match from this list or "": '+envNames}]}]})});
+    if(!res.ok)throw new Error('API '+res.status);
+    const d=await res.json();const txt=(d.content||[]).map(c=>c.text||'').join('');
+    const j=JSON.parse(txt.replace(/```json|```/g,'').trim());
+    if(j.total)$('#txAmt').value=(+j.total).toFixed(2);
+    if(j.payee)$('#txPayee').value=j.payee;
+    if(j.date&&/^\d{4}-\d{2}-\d{2}$/.test(j.date))$('#txDate').value=j.date;
+    if(j.envelope){const m=envs().find(e=>e.name.toLowerCase()===j.envelope.toLowerCase());if(m){txEnvSel=m.id;fillEnvChips()}}
+    $('#scanStatus').textContent='✓ Check it and hit Log it'}
+  catch(e){$('#scanStatus').textContent='Scan failed — '+(String(e).includes('401')?'invalid API key':'try again or enter manually')}}
+function shrink(file){return new Promise((res,rej)=>{const img=new Image();const r=new FileReader();
+  r.onload=()=>{img.onload=()=>{const mx=1200,sc=Math.min(1,mx/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');c.width=img.width*sc;c.height=img.height*sc;
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    res(c.toDataURL('image/jpeg',.82).split(',')[1])};img.src=r.result};
+  r.onerror=rej;r.readAsDataURL(file)})}
+
+/* ================= envelope form ================= */
+let efId=null,efKindV='spend',efRollV=true;
+function efConv(src){const f=payPerMonth();
+  if(src==='pay'){const v=parseFloat($('#efDef').value)||0;$('#efDefMo').value=v?(v*f).toFixed(0):''}
+  else{const v=parseFloat($('#efDefMo').value)||0;$('#efDef').value=v?(v/f).toFixed(2):''}
+  const pay=parseFloat($('#efDef').value)||0;const wk=pay/weeksPerPeriod();
+  $('#efWeekHint').textContent=pay?('That\'s about $'+wk.toFixed(0)+'/week to spend inside the period'):''}
+function openEnvForm(id,kind){efId=id||null;const e=id?data.env[id]:null;
+  efKindV=e?.kind||kind||'spend';efRollV=e?(!!e.roll):true;
+  $('#envFormTitle').textContent=e?'Edit envelope':'New envelope';
+  $('#efName').value=e?.name||'';$('#efTarget').value=e?.target?(e.target/100):'';$('#efTargetDate').value=e?.targetDate||'';
+  $('#efDef').value=e?.def?(e.def/100):'';$('#efDefMo').value='';if(e?.def)efConv('pay');else $('#efWeekHint').textContent='';
+  $('#efDelete').style.display=e?'block':'none';
+  efSetKind(efKindV);efSetRoll(efRollV);closeSheet('shFund');openSheet('shEnv')}
+function efSetKind(k){efKindV=k;document.querySelectorAll('#efKind .c').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+  $('#efGoalFields').style.display=k==='goal'?'block':'none';$('#efRollWrap').style.display=k==='goal'?'none':'block'}
+function efSetRoll(v){efRollV=v;$('#efRoll1').classList.toggle('on',v);$('#efRoll0').classList.toggle('on',!v)}
+function saveEnv(){const name=$('#efName').value.trim();if(!name)return toast('Give it a name');
+  const id=efId||uid();const prev=efId?data.env[efId]:null;
+  put('env/'+id,{name,kind:efKindV,roll:efKindV==='goal'?true:efRollV,def:toC($('#efDef').value)||null,
+    startP:prev?.startP??curP(),
+    target:efKindV==='goal'?toC($('#efTarget').value):null,targetDate:efKindV==='goal'?($('#efTargetDate').value||null):null});
+  closeSheet('shEnv');toast('Envelope saved')}
+function deleteEnv(){if(!efId)return;if(!confirm('Delete this envelope? Past transactions keep their history.'))return;
+  put('env/'+efId,null);closeSheet('shEnv');toast('Deleted')}
+
+/* ---- fund sheet ---- */
+let fundId=null,fundP=0;
+function openFund(id){fundId=id;const p=fundP=curP()+(cfg._view==='env'?viewP:0);const e=data.env[id];if(!e)return;
+  $('#fundTitle').textContent=(e.kind==='goal'?'🎯 ':'✉️ ')+e.name+' · '+pLabel(p);
+  $('#fundAlloc').textContent=fmt(alloc(id,p));
+  $('#fundSpent').textContent=fmt(envFlow(id,p));
+  const av=avail(id,p);const fa=$('#fundAvail');fa.textContent=fmt(av);fa.className=av<0?'neg-t':'pos-t';
+  $('#fundIn').value=alloc(id,p)?(alloc(id,p)/100):'';
+  const wk=weeksPerPeriod(),f=payPerMonth(),a=alloc(id,p);
+  $('#fundHint').innerHTML=((a?('≈ <b class="mono">'+fmt0(a/wk)+'</b>/week · <b class="mono">'+fmt0(a*f)+'</b>/month'):'')+
+    (e.def?((a?' · ':'')+'default '+fmt(e.def)+'/paycheck'):''))||'';
+  $('#fundTx').innerHTML=txList().filter(t=>t.env===id||t.from===id||t.to===id).slice(0,20).map(t=>txRow(t)).join('')||'<div class="empty">No transactions yet.</div>';
+  openSheet('shFund')}
+function saveFund(){put('budgets/'+fundP+'/'+fundId,toC($('#fundIn').value));closeSheet('shFund');toast('Assignment updated')}
+function editEnvFromFund(){openEnvForm(fundId)}
+function copyPrevBudget(){const p=curP()+viewP;const prev=data.budgets?.[p-1];
+  if(!prev)return toast('No previous period to copy');
+  if(!confirm('Copy last period\'s assignments over this period?'))return;
+  put('budgets/'+p,{...prev});toast('Budget copied — adjust as needed')}
+
+/* ---- move money ---- */
+function openMove(){const opts=envs().map(e=>'<option value="'+e.id+'">'+esc(e.name)+' ('+fmt0(avail(e.id,curP()+viewP))+')</option>').join('');
+  if(!opts)return toast('Add envelopes first');
+  $('#mvFrom').innerHTML=opts;$('#mvTo').innerHTML=opts;$('#mvAmt').value='';openSheet('shMove')}
+function saveMove(){const amt=toC($('#mvAmt').value);if(!amt)return toast('Enter an amount');
+  const from=$('#mvFrom').value,to=$('#mvTo').value;if(from===to)return toast('Pick two different envelopes');
+  put('tx/'+uid(),{kind:'mv',amt,from,to,date:today(),who:cfg.member,payee:''});
+  closeSheet('shMove');toast('Moved '+fmt(amt))}
+
+/* ================= bill / debt / account forms ================= */
+let billId=null,bfSub=false;
+function openBillForm(id){billId=id||null;const b=id?data.bills[id]:null;
+  $('#billFormTitle').textContent=b?'Edit bill':'New bill';
+  $('#bfName').value=b?.name||'';$('#bfAmt').value=b?.amt?(b.amt/100):'';$('#bfDay').value=b?.day||'';
+  $('#bfEnv').innerHTML='<option value="">— none —</option>'+envs().map(e=>'<option value="'+e.id+'"'+(b?.env===e.id?' selected':'')+'>'+esc(e.name)+'</option>').join('');
+  bfSetSub(!!b?.sub);$('#bfDelete').style.display=b?'block':'none';openSheet('shBill')}
+function bfSetSub(v){bfSub=v;$('#bfSub1').classList.toggle('on',v);$('#bfSub0').classList.toggle('on',!v)}
+function saveBill(){const name=$('#bfName').value.trim(),amt=toC($('#bfAmt').value),day=Math.min(31,Math.max(1,parseInt($('#bfDay').value)||1));
+  if(!name||!amt)return toast('Name and amount required');
+  const prev=billId?data.bills[billId]:null;
+  put('bills/'+(billId||uid()),{name,amt,day,env:$('#bfEnv').value||null,sub:bfSub,paid:prev?.paid||null});
+  closeSheet('shBill');toast('Bill saved')}
+function deleteBill(){if(billId&&confirm('Delete this bill?')){put('bills/'+billId,null);closeSheet('shBill')}}
+
+let debtId=null;
+function openDebtForm(id){debtId=id||null;const d=id?data.debts[id]:null;
+  $('#debtFormTitle').textContent=d?'Edit debt':'New debt';
+  $('#dfName').value=d?.name||'';$('#dfBal').value=d?.bal?(d.bal/100):'';$('#dfApr').value=d?.apr??'';$('#dfMin').value=d?.min?(d.min/100):'';
+  $('#dfDelete').style.display=d?'block':'none';openSheet('shDebt')}
+function saveDebt(){const name=$('#dfName').value.trim();if(!name)return toast('Name it');
+  put('debts/'+(debtId||uid()),{name,bal:toC($('#dfBal').value),apr:parseFloat($('#dfApr').value)||0,min:toC($('#dfMin').value)});
+  closeSheet('shDebt');toast('Debt saved')}
+function deleteDebt(){if(debtId&&confirm('Delete? (Congrats if it\'s paid off!)')){put('debts/'+debtId,null);closeSheet('shDebt')}}
+
+let acctId=null;
+function openAcctForm(id){acctId=id||null;const a=id?data.accounts[id]:null;
+  $('#acctFormTitle').textContent=a?'Edit account':'New account';
+  $('#afName').value=a?.name||'';$('#afType').value=a?.type||'asset';$('#afBal').value=a?.bal?(a.bal/100):'';
+  $('#afTag').value=a?.tag||(a?.type==='liab'?'other':'cash');$('#afContrib').value=a?.contrib?(a.contrib/100):'';
+  $('#afDelete').style.display=a?'block':'none';openSheet('shAcct')}
+function saveAcct(){const name=$('#afName').value.trim();if(!name)return toast('Name it');
+  put('accounts/'+(acctId||uid()),{name,type:$('#afType').value,bal:toC($('#afBal').value),tag:$('#afTag').value,contrib:toC($('#afContrib').value)});
+  closeSheet('shAcct');toast('Account saved')}
+function deleteAcct(){if(acctId&&confirm('Delete this account?')){put('accounts/'+acctId,null);closeSheet('shAcct')}}
+
+/* ================= all tx ================= */
+function renderAllTx(){const q=($('#txSearch').value||'').toLowerCase();
+  const list=txList().filter(t=>{if(!q)return true;
+    return (t.payee||'').toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q)||
+      (data.env[t.env]?.name||'').toLowerCase().includes(q)}).slice(0,150);
+  $('#allTxList').innerHTML=list.map(t=>txRow(t)).join('')||'<div class="empty">Nothing found.</div>'}
+
+/* ================= settings & wizard ================= */
+function renderSettings(){const setup=!cfg.mode;
+  $('#wiz').style.display=setup?'block':'none';
+  $('#setBody').style.display=setup?'none':'block';
+  $('#setClose').style.display=setup?'none':'block';
+  if(setup)return;
+  $('#setCode').textContent=cfg.code?('#'+cfg.code):'local only';
+  $('#setSync').textContent=cfg.mode==='cloud'?'Firebase live':'this device';
+  $('#setMe').textContent=data.members[cfg.member]?.name||'—';
+  $('#setInc').value=(data.settings.income||0)/100||'';
+  $('#setAnchor').value=data.settings.anchor||today();
+  $('#setFreq').value=data.settings.freq||'semi';
+  $('#setAnchorWrap').style.display=isSemi()?'none':'block';
+  $('#setKey').value=localStorage.getItem('hb4_apikey')||'';
+  $('#setMembers').innerHTML=Object.entries(data.members).map(([id,m],i)=>
+    '<div class="kv"><span>'+whoBadge(id)+' '+esc(m.name)+(id===cfg.member?' (you)':'')+'</span>'+
+    '<span style="display:flex;gap:6px;align-items:center">'+
+    (id!==cfg.member?'<button class="btn ghost sm" onclick="cfg.member=\''+id+'\';saveCfg();renderSettings();toast(\'This phone is now \'+data.members[\''+id+'\'].name)">Use on this phone</button>':'')+
+    (id!==cfg.member?'<button class="btn danger sm" onclick="deleteMember(\''+id+'\')">🗑</button>':'')+
+    '</span></div>').join('')||'<div class="muted">No members yet</div>'}
+function deleteMember(id){const m=data.members[id];if(!m)return;
+  if(id===cfg.member)return toast('That\'s the member this phone is using — switch first');
+  if(Object.keys(data.members).length<=1)return toast('Can\'t remove the only member');
+  if(!confirm('Remove "'+m.name+'" from the household?\n\nTheir logged transactions stay in the history. If this is a duplicate of you, make sure the one marked "(you)" is the one you keep.'))return;
+  put('members/'+id,null);toast(m.name+' removed')}
+function saveSettings(){put('settings/income',toC($('#setInc').value));
+  const fv=$('#setFreq').value;put('settings/freq',fv==='semi'?'semi':(+fv||14));
+  put('settings/anchor',$('#setAnchor').value||today());
+  $('#setAnchorWrap').style.display=fv==='semi'?'none':'block';toast('Saved')}
+function addMember(){const n=$('#newMember').value.trim();if(!n)return;
+  put('members/'+uid(),{name:n});$('#newMember').value='';toast(n+' added')}
+function wizGo(s){$('#wizStep1').style.display=s===1?'block':'none';$('#wizStep2').style.display=s===2?'block':'none'}
+function wizLocal(){cfg={mode:'local'};const name=prompt('Your first name?')||'Me';
+  const mid=uid();data=blank();data.members[mid]={name};cfg.member=mid;saveCfg();cache();
+  closeSheet('shSettings');bootstrap();toast('Local budget ready')}
+function wizCreate(){const url=$('#wizDb').value.trim(),name=$('#wizName').value.trim()||'Me';
+  if(!/^https:\/\/.+firebase.+/.test(url))return toast('Paste your Firebase database URL');
+  if(!fbReady())return toast('Firebase didn\'t load — check your connection and reload');
+  const code=String(Math.floor(100000+Math.random()*900000));
+  cfg={mode:'cloud',dbUrl:url,code};const mid=uid();cfg.member=mid;saveCfg();
+  data=blank();data.members[mid]={name};cache();
+  connectCloud();
+  if(!rootRef)return toast('Couldn\'t reach that database URL — double-check it');
+  rootRef.set(data).then(()=>toast('Household #'+code+' created — share the code with your wife'))
+    .catch(e=>toast('Write blocked — check your database rules'));
+  closeSheet('shSettings');bootstrap()}
+function wizJoinHH(){const url=$('#wizDb').value.trim(),code=$('#wizJoin').value.trim(),name=$('#wizName').value.trim()||'Me';
+  if(!/^https:\/\/.+firebase.+/.test(url))return toast('Paste your Firebase database URL');
+  if(!/^\d{6}$/.test(code))return toast('Enter the 6-digit code');
+  if(!fbReady())return toast('Firebase didn\'t load — check your connection and reload');
+  cfg={mode:'cloud',dbUrl:url,code};saveCfg();connectCloud();
+  if(!rootRef)return toast('Couldn\'t reach that database URL — double-check it');
+  rootRef.once('value').then(s=>{if(!s.val()){toast('No household with that code');return}
+    const mid=uid();cfg.member=mid;saveCfg();
+    rootRef.child('members/'+mid).set({name});
+    closeSheet('shSettings');bootstrap();toast('Joined household #'+code)})
+    .catch(e=>toast('Could not reach database — check the URL and rules'))}
+function leaveHH(){if(!confirm('Remove this household from this device? Cloud data stays safe.'))return;
+  localStorage.removeItem('hb5_cfg');localStorage.removeItem('hb5_cache');location.reload()}
+
+/* ---- backup ---- */
+function exportJSON(){const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='homebase-backup-'+today()+'.json';a.click();toast('Backup downloaded')}
+function importJSON(inp){const f=inp.files[0];inp.value='';if(!f)return;
+  const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);
+    if(!confirm('Replace ALL current data with this backup?'))return;
+    data=Object.assign(blank(),j);cache();if(rootRef)rootRef.set(data);renderAll();toast('Backup restored')}
+    catch(e){toast('That file didn\'t parse')}};r.readAsText(f)}
+
+/* ================= boot ================= */
+function bootstrap(){
+  applyLang();
+  // migrate: old biweekly default -> 1st & 15th, but only if no real budget data exists yet
+  if(data.settings.freq===14&&!Object.keys(data.tx||{}).length&&!Object.keys(data.budgets||{}).length){
+    data.settings.freq='semi';cache()}
+  if(!cfg.mode){openSheet('shSettings');renderSettings()}
+  else{if(cfg.mode==='cloud')connectCloud();else setDot(true)}
+  go('home')}
+window.addEventListener('visibilitychange',()=>{if(!document.hidden)renderAll()});
+bootstrap();
+</script>
+</body>
+</html>
