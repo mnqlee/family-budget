@@ -127,6 +127,25 @@ input[type=date].in,input[type=month].in{min-height:47px;-webkit-appearance:none
 .seg{display:flex;background:#E9EEE8;border-radius:11px;padding:3px;margin-bottom:14px}
 .seg button{flex:1;padding:9px;border-radius:8px;font-weight:700;font-size:.8rem;color:var(--ink3)}
 .seg button.on{background:#fff;color:var(--green3);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.splitwrap{display:flex;gap:0;position:relative;margin-bottom:14px}
+.splitwrap::after{content:'';position:absolute;left:50%;top:4px;bottom:4px;width:1.5px;
+  background:repeating-linear-gradient(to bottom,var(--brass) 0,var(--brass) 5px,transparent 5px,transparent 10px)}
+.splitcol{flex:1;min-width:0;padding:0 8px}
+.splitcol .colhd{text-align:center;margin-bottom:8px}
+.splitcol .rng{font-family:'IBM Plex Mono',monospace;font-size:.66rem;font-weight:600;color:var(--green3)}
+.splitcol .badge{display:inline-block;margin-top:3px;font-size:.54rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--brass);padding:2px 8px;border-radius:99px}
+.splitcol .tot{font-family:'IBM Plex Mono',monospace;font-size:.9rem;font-weight:600;margin-top:5px}
+.splitcol .totlbl{font-size:.54rem;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.splitcol .grp{font-size:.56rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin:11px 0 5px 2px}
+.splitcol .senv{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:8px 9px;margin-bottom:6px;cursor:pointer;display:block;width:100%;text-align:left}
+.splitcol .senv .nm{font-size:.7rem;font-weight:700;line-height:1.2}
+.splitcol .senv .row{display:flex;justify-content:space-between;align-items:baseline;margin-top:2px}
+.splitcol .senv .amt{font-family:'IBM Plex Mono',monospace;font-size:.76rem;font-weight:600}
+.splitcol .senv .of{font-size:.58rem;color:var(--ink3)}
+.splitcol .senv .bar{height:3.5px;border-radius:2px;background:#E7ECE6;margin-top:5px}
+.splitcol .senv .bar i{display:block;height:100%;border-radius:2px;background:var(--green2)}
+.splitcol .senv .bar i.warn{background:var(--amber)}
+.splitcol .senv .bar i.over{background:var(--red)}
 
 /* ---------- bottom nav ---------- */
 nav.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--green);display:flex;z-index:40;
@@ -240,6 +259,16 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <b id="envPeriodLbl"></b>
       <button onclick="shiftPeriod(1)">›</button>
     </div>
+    <div class="seg" style="margin-top:2px">
+      <button id="envModePeriod" onclick="setEnvViewMode('period')">2-Week</button>
+      <button id="envModeMonth" onclick="setEnvViewMode('month')">Month</button>
+      <button id="envModeSplit" onclick="setEnvViewMode('split')">Split</button>
+    </div>
+    <div id="splitWrap" class="splitwrap" style="display:none">
+      <div class="splitcol" id="splitLeft"></div>
+      <div class="splitcol" id="splitRight"></div>
+    </div>
+    <div id="envNormalWrap">
     <div class="card">
       <div class="kv"><span>Expected income</span><b id="envInc"></b></div>
       <div class="kv"><span>Assigned to envelopes</span><b id="envAlloc"></b></div>
@@ -252,6 +281,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
     </div>
     <div class="card"><h2>Spending envelopes</h2><div id="envList"></div></div>
     <div class="card"><h2>🎯 Goals &amp; sinking funds</h2><div id="envGoalList"></div></div>
+    </div>
   </section>
 
   <!-- ============ BILLS ============ -->
@@ -329,8 +359,11 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
   <!-- ============ REPORTS ============ -->
   <section class="view" id="v-reports">
     <div class="card"><h2>📊 Income vs spending — 6 months</h2><canvas id="repFlow" height="170"></canvas></div>
-    <div class="card"><h2>This month by envelope</h2><div id="repEnv"></div></div>
-    <div class="card"><h2>Who spent it — this month</h2><div id="repWho"></div></div>
+    <div class="seg"><button id="repWin30" onclick="setRepWindow('30')">Last 30 Days</button><button id="repWinMonth" onclick="setRepWindow('month')">This Month</button></div>
+    <div class="card"><h2>Where we're spending most</h2><div id="repEnv"></div></div>
+    <div class="card" id="repTrendCard" style="display:none"><h2>⚠️ Trending high</h2><p class="muted" style="margin:-4px 0 10px">Categories running above their normal 3-month average.</p><div id="repTrend"></div></div>
+    <div class="card" id="repPaceCard" style="display:none"><h2>⏱️ Pace check — this pay period</h2><p class="muted" style="margin:-4px 0 10px">Spending faster than the period's days are passing.</p><div id="repPace"></div></div>
+    <div class="card"><h2>Who spent it</h2><div id="repWho"></div></div>
   </section>
 
   <!-- ============ ROADMAP ============ -->
@@ -414,7 +447,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
     <div class="card" style="padding:12px 10px">
       <div id="calGrid"></div>
       <div class="row" style="justify-content:center;gap:12px;margin-top:12px;font-size:.68rem;color:var(--ink3);flex-wrap:wrap">
-        <span>🟢 Payday</span><span>🔴 Bill due</span><span>• Spending</span>
+        <span>🟢 Payday</span><span>🔴 Bill due</span><span>🟡 Yearly due</span><span>• Spending</span>
         <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#A9861F"></span> Your note</span>
         <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#D1618F"></span> Spouse note</span>
       </div>
@@ -1016,8 +1049,9 @@ function avail(envId,p){const e=data.env[envId];if(!e)return 0;
   if(e.roll||e.kind==='goal'){let s=0;for(let q=minPid();q<=p;q++)s+=alloc(envId,q)-envFlow(envId,q);return s}
   return alloc(envId,p)-envFlow(envId,p)}
 function toAssign(p){return (data.settings.income||0)-allocTotal(p)}
-function spentPeriod(p){let s=0;for(const t of Object.values(data.tx||{}))if(t.kind==='exp'&&pidOf(t.date)===p)s+=t.amt;return s}
-function safeToSpend(p){let s=0;for(const e of envs())if(e.kind!=='goal')s+=Math.max(0,avail(e.id,p));return s}
+function spentPeriod(p){const bIds=billEnvIds();let s=0;for(const t of Object.values(data.tx||{}))if(t.kind==='exp'&&pidOf(t.date)===p&&!bIds.has(t.env))s+=t.amt;return s}
+function billEnvIds(){return new Set(Object.values(data.bills||{}).map(b=>b.env).filter(Boolean))}
+function safeToSpend(p){const bIds=billEnvIds();let s=0;for(const e of envs())if(e.kind!=='goal'&&!bIds.has(e.id))s+=Math.max(0,avail(e.id,p));return s}
 
 /* ================= navigation ================= */
 const VIEWS=['home','env','bills','more','goals','debts','worth','reports','road','kids','give','trans','cal','subs','vault','tank','help'];
@@ -1057,7 +1091,10 @@ function txRow(t,showDel){const e=data.env[t.env];const sign=t.kind==='inc'?'+':
 function txTap(id){const t=data.tx[id];if(!t)return;
   if(confirm('Delete this entry?\n'+(t.payee||'')+' '+fmt(t.amt)))put('tx/'+id,null),toast('Deleted')}
 
-function envRowHTML(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
+function envRowHTML(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);return envRowRaw(e,a,f,av)}
+function envRowHTMLMonth(e,ps){const a=ps.reduce((s,p)=>s+alloc(e.id,p),0),f=ps.reduce((s,p)=>s+envFlow(e.id,p),0);
+  const av=(e.roll||e.kind==='goal')?avail(e.id,ps[ps.length-1]):a-f;return envRowRaw(e,a,f,av)}
+function envRowRaw(e,a,f,av){
   const denom=e.kind==='goal'?(e.target||1):(a||1);
   const pct=Math.min(1,Math.max(0,(e.kind==='goal'?av:f)/denom));
   const barCls=e.kind==='goal'?'goal':(av<0?'over':(a&&f/a>.85?'warn':''));
@@ -1113,7 +1150,54 @@ function renderHome(){const p=curP();
   const txs=txList().slice(0,8);
   $('#hTx').innerHTML=txs.length?txs.map(t=>txRow(t)).join(''):'<div class="empty">Nothing logged yet. Hit the ＋ to add your first transaction.</div>'}
 
-function renderEnvView(){const p=curP()+viewP;
+let envViewMode='period';
+function setEnvViewMode(m){if(m===envViewMode)return;
+  if(m==='split'&&!isSemi()){toast('Split view is built for the 1st/15th pay cycle — switch Settings → pay cycle to see it');return}
+  envViewMode=m;viewP=0;renderAll()}
+function periodsInMonth(refDate){const y=refDate.getFullYear(),m=refDate.getMonth();
+  const guess=pidOf(y+'-'+String(m+1).padStart(2,'0')+'-01');const out=[];
+  for(let q=guess-3;q<=guess+6;q++){const s=pStart(q);if(s.getFullYear()===y&&s.getMonth()===m)out.push(q)}
+  return out.sort((a,b)=>a-b)}
+function ordSuf(d){const v=d%100;if(v>=11&&v<=13)return d+'th';
+  switch(d%10){case 1:return d+'st';case 2:return d+'nd';case 3:return d+'rd';default:return d+'th'}}
+function splitEnvRow(e,p,bill){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
+  const denom=bill?(a||1):(a||1);const pct=Math.min(1,Math.max(0,f/denom));
+  const barCls=av<0?'over':(a&&f/a>.85?'warn':'');
+  const sub=bill?('due the '+ordSuf(bill.day)+(isPaid(bill,pStart(p))?' ✓':'')):('of '+fmt(a));
+  return '<button class="senv" onclick="openFund(\''+e.id+'\')">'+
+    '<div class="nm">'+esc(e.name)+'</div>'+
+    '<div class="row"><span class="amt">'+fmt(av)+(bill?'':' left')+'</span><span class="of">'+sub+'</span></div>'+
+    '<div class="bar"><i class="'+barCls+'" style="width:'+(pct*100)+'%"></i></div></button>'}
+function renderEnvViewSplit(){
+  const ref=new Date();ref.setDate(1);ref.setMonth(ref.getMonth()+viewP);
+  const y=ref.getFullYear(),m=ref.getMonth(),dim=daysInMonth(new Date(y,m,1));
+  const leftP=pidOf(y+'-'+String(m+1).padStart(2,'0')+'-01'),rightP=leftP+1;
+  $('#envPeriodLbl').textContent=ref.toLocaleDateString('en-US',{month:'long',year:'numeric'})+(viewP===0?' · now':'');
+  const curPid=curP();
+  const billByEnv={};bills().forEach(b=>{if(b.env)billByEnv[b.env]=b});
+  const sp=envs().filter(e=>e.kind==='spend');
+  const plain=sp.filter(e=>!billByEnv[e.id]);
+  const leftBills=sp.filter(e=>billByEnv[e.id]&&billByEnv[e.id].day<15);
+  const rightBills=sp.filter(e=>billByEnv[e.id]&&billByEnv[e.id].day>=15);
+  const col=(p,billEnvs,rng,isCur)=>{
+    const tot=plain.reduce((s,e)=>s+alloc(e.id,p),0)+billEnvs.reduce((s,e)=>s+alloc(e.id,p),0);
+    let h='<div class="colhd"><div class="rng">'+rng+'</div>'+(isCur?'<div class="badge">Today</div>':'')+
+      '<div class="tot">'+fmt(tot)+'</div><div class="totlbl">assigned</div></div>';
+    h+='<div class="grp">Spending</div>'+plain.map(e=>splitEnvRow(e,p)).join('');
+    if(billEnvs.length)h+='<div class="grp">Bills due this half</div>'+billEnvs.map(e=>splitEnvRow(e,p,billByEnv[e.id])).join('');
+    return h};
+  const mon=ref.toLocaleDateString('en-US',{month:'short'});
+  $('#splitLeft').innerHTML=col(leftP,leftBills,mon+' 1–14',curPid===leftP);
+  $('#splitRight').innerHTML=col(rightP,rightBills,mon+' 15–'+dim,curPid===rightP)}
+function renderEnvView(){
+  $('#envModePeriod').classList.toggle('on',envViewMode==='period');
+  $('#envModeMonth').classList.toggle('on',envViewMode==='month');
+  $('#envModeSplit').classList.toggle('on',envViewMode==='split');
+  $('#splitWrap').style.display=envViewMode==='split'?'flex':'none';
+  $('#envNormalWrap').style.display=envViewMode==='split'?'none':'block';
+  if(envViewMode==='split'){renderEnvViewSplit();return}
+  if(envViewMode==='month'){renderEnvViewMonth();return}
+  const p=curP()+viewP;
   $('#envPeriodLbl').textContent=pLabel(p)+(viewP===0?' · now':'');
   $('#envInc').textContent=fmt(data.settings.income||0);
   $('#envAlloc').textContent=fmt(allocTotal(p));
@@ -1123,6 +1207,18 @@ function renderEnvView(){const p=curP()+viewP;
   const sp=envs().filter(e=>e.kind!=='goal'),gl=envs().filter(e=>e.kind==='goal');
   $('#envList').innerHTML=sp.length?sp.map(e=>envRowHTML(e,p)).join(''):'<div class="empty">Add envelopes for groceries, gas, fun money…</div>';
   $('#envGoalList').innerHTML=gl.length?gl.map(e=>envRowHTML(e,p)).join(''):'<div class="empty">Sinking funds live here — car repairs, Christmas, PCS moves.</div>'}
+function renderEnvViewMonth(){
+  const ref=new Date();ref.setDate(1);ref.setMonth(ref.getMonth()+viewP);
+  const ps=periodsInMonth(ref);
+  $('#envPeriodLbl').textContent=ref.toLocaleDateString('en-US',{month:'long',year:'numeric'})+(viewP===0?' · now':'');
+  const inc=(data.settings.income||0)*ps.length,allocT=ps.reduce((s,p)=>s+allocTotal(p),0);
+  $('#envInc').textContent=fmt(inc);$('#envAlloc').textContent=fmt(allocT);
+  const ta=inc-allocT;const l=$('#envLeft');l.textContent=fmt(Math.abs(ta));
+  l.className=ta===0?'pos-t':ta>0?'amber-t':'neg-t';
+  $('#envLeftLbl').textContent=ta>=0?'Left to assign':'Over-assigned';
+  const sp=envs().filter(e=>e.kind!=='goal'),gl=envs().filter(e=>e.kind==='goal');
+  $('#envList').innerHTML=sp.length?sp.map(e=>envRowHTMLMonth(e,ps)).join(''):'<div class="empty">Add envelopes for groceries, gas, fun money…</div>';
+  $('#envGoalList').innerHTML=gl.length?gl.map(e=>envRowHTMLMonth(e,ps)).join(''):'<div class="empty">Sinking funds live here — car repairs, Christmas, PCS moves.</div>'}
 
 /* ---- bills ---- */
 function bills(){return Object.entries(data.bills||{}).map(([id,b])=>({id,...b})).sort((a,b)=>a.day-b.day)}
@@ -1202,6 +1298,16 @@ function saveUpd(){let changed=0;document.querySelectorAll('#updList [data-upd]'
   closeSheet('shUpd');toast(changed+' account'+(changed===1?'':'s')+' updated · snapshot saved')}
 
 /* ---- reports ---- */
+let repWindow='30';
+function setRepWindow(w){if(w===repWindow)return;repWindow=w;renderReports()}
+function windowRange(){const now=new Date();
+  if(repWindow==='30'){const s=new Date(now);s.setDate(s.getDate()-29);return[s.toISOString().slice(0,10),today()]}
+  return[ym(now)+'-01',today()]}
+function trailingAvg(envId){const now=new Date();const sums=[];
+  for(let i=1;i<=3;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const key=ym(d);let s=0;
+    for(const t of Object.values(data.tx||{}))if(t.kind==='exp'&&t.env===envId&&t.date.slice(0,7)===key)s+=t.amt;
+    sums.push(s)}
+  return sums.reduce((a,b)=>a+b,0)/sums.length}
 function renderReports(){const now=new Date();const months=[];
   for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(ym(d))}
   const inc=months.map(m=>0),exp=months.map(m=>0);
@@ -1209,17 +1315,41 @@ function renderReports(){const now=new Date();const months=[];
     if(t.kind==='inc')inc[i]+=t.amt;if(t.kind==='exp')exp[i]+=t.amt}
   barChart($('#repFlow'),months.map(m=>new Date(m+'-02').toLocaleDateString('en-US',{month:'short'})),
     [{c:'#2C5C49',v:inc},{c:'#B3402F',v:exp}]);
-  const cm=ym(now);const byEnv={},byWho={};
-  for(const t of Object.values(data.tx||{})){if(t.kind!=='exp'||t.date.slice(0,7)!==cm)continue;
-    const en=data.env[t.env]?.name||'No envelope';byEnv[en]=(byEnv[en]||0)+t.amt;
+  $('#repWin30').classList.toggle('on',repWindow==='30');$('#repWinMonth').classList.toggle('on',repWindow==='month');
+  const[ws,we]=windowRange();
+  const byEnv={},byWho={};
+  for(const t of Object.values(data.tx||{})){if(t.kind!=='exp'||t.date<ws||t.date>we)continue;
+    const eid=t.env||'_none';const en=data.env[t.env]?.name||'No envelope';
+    byEnv[eid]=byEnv[eid]||{name:en,total:0};byEnv[eid].total+=t.amt;
     const w=data.members[t.who]?.name||'?';byWho[w]=(byWho[w]||0)+t.amt}
-  const mx=Math.max(1,...Object.values(byEnv));
-  $('#repEnv').innerHTML=Object.entries(byEnv).sort((a,b)=>b[1]-a[1]).map(([n,v])=>
-    '<div class="env"><div class="top"><span class="name">'+esc(n)+'</span><span class="amt">'+fmt(v)+'</span></div>'+
-    '<div class="bar"><i style="width:'+(v/mx*100)+'%"></i></div></div>').join('')||'<div class="empty">No spending logged this month.</div>';
+  const mx=Math.max(1,...Object.values(byEnv).map(x=>x.total));
+  $('#repEnv').innerHTML=Object.values(byEnv).sort((a,b)=>b.total-a.total).map(x=>
+    '<div class="env"><div class="top"><span class="name">'+esc(x.name)+'</span><span class="amt">'+fmt(x.total)+'</span></div>'+
+    '<div class="bar"><i style="width:'+(x.total/mx*100)+'%"></i></div></div>').join('')||'<div class="empty">No spending logged in this window.</div>';
   const tw=Object.values(byWho).reduce((s,v)=>s+v,0)||1;
   $('#repWho').innerHTML=Object.entries(byWho).map(([n,v])=>
-    '<div class="kv"><span>'+esc(n)+'</span><b>'+fmt(v)+' · '+Math.round(v/tw*100)+'%</b></div>').join('')||'<div class="empty">No spending logged this month.</div>'}
+    '<div class="kv"><span>'+esc(n)+'</span><b>'+fmt(v)+' · '+Math.round(v/tw*100)+'%</b></div>').join('')||'<div class="empty">No spending logged in this window.</div>';
+  // trending high: window spend vs trailing 3-month average for the same category
+  const trending=Object.entries(byEnv).filter(([eid])=>eid!=='_none').map(([eid,x])=>{
+    const avg=trailingAvg(eid);const over=x.total-avg;const pct=avg>0?(over/avg*100):0;
+    return{name:x.name,total:x.total,avg,over,pct}})
+    .filter(x=>x.avg>0&&x.over>2000&&x.pct>25).sort((a,b)=>b.over-a.over);
+  $('#repTrendCard').style.display=trending.length?'':'none';
+  $('#repTrend').innerHTML=trending.map(x=>
+    '<div class="kv"><span>'+esc(x.name)+'</span><b class="neg-t">+'+Math.round(x.pct)+'% · '+fmt(x.over)+' over</b></div>'+
+    '<div class="muted" style="margin:-4px 0 8px">'+fmt(x.total)+' this window vs '+fmt(x.avg)+' normal</div>').join('');
+  // pace check: current period, non-rolling spend envelopes not committed to a bill
+  const p=curP(),ps=pStart(p),pe=pEnd(p);
+  const totalDays=Math.round((pe-ps)/864e5)+1;
+  const elapsed=Math.min(totalDays,Math.max(0,Math.round((new Date(new Date().toDateString())-ps)/864e5)+1));
+  const timePct=elapsed/totalDays;const bIds=billEnvIds();
+  const paceFlags=(timePct<0.15)?[]:envs().filter(e=>e.kind==='spend'&&!e.roll&&!bIds.has(e.id)).map(e=>{
+    const a=alloc(e.id,p),f=envFlow(e.id,p);if(!a)return null;const spendPct=f/a;
+    return{name:e.name,spendPct,lead:spendPct-timePct}}).filter(x=>x&&x.lead>0.25).sort((a,b)=>b.lead-a.lead);
+  $('#repPaceCard').style.display=paceFlags.length?'':'none';
+  $('#repPace').innerHTML=paceFlags.map(x=>
+    '<div class="kv"><span>'+esc(x.name)+'</span><b class="amber-t">'+Math.round(x.spendPct*100)+'% spent</b></div>'+
+    '<div class="muted" style="margin:-4px 0 8px">only '+Math.round(timePct*100)+'% of the period has passed</div>').join('')}
 
 function prepCanvas(cv){const dpr=window.devicePixelRatio||1;if(!cv.dataset.h)cv.dataset.h=cv.getAttribute('height')||150;const w=cv.clientWidth||300,h=+cv.dataset.h;
   cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);return{ctx,w,h}}
@@ -1460,18 +1590,19 @@ function renderCal(){const base=new Date();const view=new Date(base.getFullYear(
   for(const t of Object.values(data.tx||{})){if(t.kind!=='exp')continue;const d=new Date(t.date+'T00:00:00');
     if(d.getFullYear()===y&&d.getMonth()===m)spend[d.getDate()]=(spend[d.getDate()]||0)+t.amt}
   const paydays=new Set();for(let p=curP()-30;p<curP()+30;p++){const d=pStart(p);if(d.getFullYear()===y&&d.getMonth()===m)paydays.add(d.getDate())}
+  const yearlyDays=new Set();annuals().forEach(a=>{const h=nextHit(a);if(h.getFullYear()===y&&h.getMonth()===m)yearlyDays.add(h.getDate())});
   let html='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">';
   ['S','M','T','W','T','F','S'].forEach(d=>html+='<div style="font-size:.6rem;font-weight:700;color:var(--ink3);padding:4px 0">'+d+'</div>');
   for(let i=0;i<first;i++)html+='<div></div>';
   for(let day=1;day<=dim;day++){const dueBills=bills().filter(b=>Math.min(b.day,dim)===day);
     const isToday=(y===base.getFullYear()&&m===base.getMonth()&&day===base.getDate());
-    const sp=spend[day]||0,pay=paydays.has(day);
+    const sp=spend[day]||0,pay=paydays.has(day),yr=yearlyDays.has(day);
     const ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     const notes=data.calnotes?.[ds]||{};const mids=Object.keys(data.members||{});
     const myNote=mids[0]&&notes[mids[0]],herNote=mids.slice(1).some(id=>notes[id]);
     html+='<button onclick="calDay('+y+','+m+','+day+')" style="aspect-ratio:1;border-radius:9px;border:1.5px solid '+(isToday?'var(--green2)':'transparent')+';background:'+(pay?'#E1F0E5':'#F5F7F3')+';display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px 2px;position:relative">'+
       '<span style="font-size:.72rem;font-weight:'+(isToday?'700':'500')+'">'+day+'</span>'+
-      '<span style="display:flex;gap:2px;margin-top:2px">'+(pay?'<span style="width:5px;height:5px;border-radius:50%;background:#2C5C49"></span>':'')+(dueBills.length?'<span style="width:5px;height:5px;border-radius:50%;background:#B3402F"></span>':'')+'</span>'+
+      '<span style="display:flex;gap:2px;margin-top:2px">'+(pay?'<span style="width:5px;height:5px;border-radius:50%;background:#2C5C49"></span>':'')+(dueBills.length?'<span style="width:5px;height:5px;border-radius:50%;background:#B3402F"></span>':'')+(yr?'<span style="width:5px;height:5px;border-radius:50%;background:#A9861F"></span>':'')+'</span>'+
       (sp?'<span class="mono" style="font-size:.52rem;color:var(--ink3);margin-top:auto">'+fmt0(sp)+'</span>':'')+
       (myNote?'<span style="position:absolute;left:4px;bottom:4px;width:5px;height:5px;border-radius:50%;background:#A9861F"></span>':'')+
       (herNote?'<span style="position:absolute;right:4px;bottom:4px;width:5px;height:5px;border-radius:50%;background:#D1618F"></span>':'')+
@@ -1483,9 +1614,11 @@ function calDay(y,m,day){const dateStr=y+'-'+String(m+1).padStart(2,'0')+'-'+Str
   window._calSel={y,m,day};
   const dueBills=bills().filter(b=>Math.min(b.day,daysInMonth(new Date(y,m,1)))===day);
   const txs=txList().filter(t=>t.date===dateStr);
+  const dueYearly=annuals().filter(a=>{const h=nextHit(a);return h.getFullYear()===y&&h.getMonth()===m&&h.getDate()===day});
   $('#calDetailLbl').textContent=new Date(y,m,day).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
   let h='';
   if(dueBills.length)h+='<div class="eyebrow" style="margin:4px 0 6px">Bills due</div>'+dueBills.map(b=>'<div class="kv"><span>📄 '+esc(b.name)+'</span><b>'+fmt(b.amt)+'</b></div>').join('');
+  if(dueYearly.length)h+='<div class="eyebrow" style="margin:12px 0 6px">Yearly expense due</div>'+dueYearly.map(a=>'<div class="kv"><span>🟡 '+esc(a.name)+'</span><b>'+fmt(a.amt)+'</b></div>').join('');
   if(txs.length)h+='<div class="eyebrow" style="margin:12px 0 6px">Logged</div>'+txs.map(t=>txRow(t)).join('');
   // notes
   const notes=data.calnotes?.[dateStr]||{};const mids=Object.keys(data.members||{});
@@ -1495,7 +1628,7 @@ function calDay(y,m,day){const dateStr=y+'-'+String(m+1).padStart(2,'0')+'-'+Str
   h+='<div class="eyebrow" style="margin:12px 0 6px">Your note</div>'+
     '<textarea class="in" id="calNoteIn" rows="2" placeholder="Anniversary dinner, TDY starts, car due for oil…">'+esc(notes[cfg.member]||'')+'</textarea>'+
     '<button class="btn sec sm" style="margin-top:8px" onclick="saveCalNote(\''+dateStr+'\')">Save note</button>';
-  if(!dueBills.length&&!txs.length&&!others.length&&!notes[cfg.member])h='<div class="empty" style="padding:8px">Nothing logged this day.</div>'+h;
+  if(!dueBills.length&&!dueYearly.length&&!txs.length&&!others.length&&!notes[cfg.member])h='<div class="empty" style="padding:8px">Nothing logged this day.</div>'+h;
   $('#calDetailBody').innerHTML=h;$('#calDetail').style.display='block';$('#calDetail').scrollIntoView({behavior:'smooth',block:'nearest'})}
 function saveCalNote(dateStr){const v=$('#calNoteIn').value.trim();
   put('calnotes/'+dateStr+'/'+cfg.member,v||null);
@@ -1538,7 +1671,15 @@ function annuals(){return Object.entries(data.annuals||{}).map(([id,a])=>({id,..
 function nextHit(a){const n=new Date();let y=n.getFullYear();if(a.month-1<n.getMonth()||(a.month-1===n.getMonth()&&n.getDate()>1))y++;return new Date(y,a.month-1,1)}
 function annPerPaycheck(a){const hits=nextHit(a);const paychecks=Math.max(1,pidOf(hits.toISOString().slice(0,10))-curP());return Math.ceil(a.amt/paychecks)}
 let annId=null;
-function renderAnnual(){const as=annuals().map(a=>({...a,hit:nextHit(a)})).sort((a,b)=>a.hit-b.hit);
+let _syncingAnnuals=false;
+function syncAnnualFunds(){if(_syncingAnnuals)return;_syncingAnnuals=true;
+  const updates=[];
+  for(const a of annuals()){if(!a.env||!data.env[a.env])continue;
+    const e=data.env[a.env],want=annPerPaycheck(a),hit=nextHit(a).toISOString().slice(0,10);
+    if(e.def!==want||e.target!==a.amt||e.targetDate!==hit)updates.push([a.env,{...e,def:want,target:a.amt,targetDate:hit}])}
+  updates.forEach(([id,v])=>put('env/'+id,v));
+  _syncingAnnuals=false}
+function renderAnnual(){syncAnnualFunds();const as=annuals().map(a=>({...a,hit:nextHit(a)})).sort((a,b)=>a.hit-b.hit);
   const yr=as.reduce((s,a)=>s+a.amt,0);
   $('#annTotal').textContent=fmt0(yr);
   $('#annPerPay').textContent=fmt0(as.reduce((s,a)=>s+annPerPaycheck(a),0));
