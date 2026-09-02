@@ -124,7 +124,50 @@ input[type=date].in,input[type=month].in{min-height:47px;-webkit-appearance:none
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 .chips .c{border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:7px 13px;font-size:.8rem;font-weight:600;color:var(--ink2)}
 .chips .c.on{background:var(--green);border-color:var(--green);color:#fff}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-left-width:4px;border-radius:16px;padding:12px;
+  text-align:left;width:100%;font-family:inherit;position:relative;transition:.16s}
+.tile:active{transform:scale(.97)}
+.tile.sel{box-shadow:0 0 0 2.5px var(--green3);border-color:var(--green3)}
+.tile .eb{display:block;font-size:.54rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);line-height:1.3}
+.tile .big{display:block;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.45rem;letter-spacing:-.03em;margin:3px 0 1px;color:var(--ink)}
+.tile .st{display:block;font-size:.62rem;font-weight:700}
+.tile .chev{position:absolute;right:8px;bottom:7px;font-size:.55rem;color:var(--ink3)}
+.tile.ok{border-left-color:var(--green2)}.tile.ok .st{color:var(--green2)}
+.tile.warn{border-left-color:var(--brass)}.tile.warn .st{color:var(--brass)}
+.tile.over{border-left-color:var(--red)}.tile.over .st{color:var(--red)}
+.tile.blue{border-left-color:var(--teal)}.tile.blue .st{color:var(--teal)}
+.drawer{background:var(--green);color:#EDF3EE;border-radius:16px;padding:13px;margin-bottom:12px}
+.drawer .dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+.drawer .dt{font-size:.57rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:#9FB8A9}
+.drawer .dx{font-size:.6rem;color:#9FB8A9;white-space:nowrap}
+.drawer .drow{display:flex;justify-content:space-between;gap:10px;font-size:.81rem;padding:6px 0;border-bottom:1px solid #2C5C49;align-items:baseline}
+.drawer .drow:last-child{border-bottom:0}
+.drawer .drow b{font-family:'IBM Plex Mono',monospace;font-weight:600;white-space:nowrap}
+.drawer .drow .sm{display:block;font-size:.63rem;color:#9FB8A9;margin-top:1px}
+.drawer .drow.hot b{color:#F2A99B}
+.drawer .drow.zero{opacity:.55}
+.drawer .drow.dtot{border-top:1.5px solid var(--brass2);border-bottom:0;margin-top:5px;padding-top:8px}
+.drawer .drow.dtot b{color:var(--brass2)}
+.editval{background:#F7FAF6;border:1.5px solid var(--green2);border-radius:8px;padding:3px 9px;
+  font-family:inherit;font-size:.8rem;font-weight:700;color:var(--green3)}
+.editval b{font-family:'IBM Plex Mono',monospace}
 .seg{display:flex;background:#E9EEE8;border-radius:11px;padding:3px;margin-bottom:14px}
+.envr{display:block;width:100%;text-align:left;padding:9px 0;border-bottom:1px solid #EFF1EA;background:none;border-left:0;border-right:0;border-top:0;font-family:inherit}
+.envr:last-child{border-bottom:0}
+.envr .r1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.envr .nm{font-size:.87rem;font-weight:700;color:var(--ink)}
+.envr .fr{font-family:'IBM Plex Mono',monospace;font-size:.85rem;font-weight:600;white-space:nowrap;color:var(--ink)}
+.envr .fr .of{color:var(--ink3);font-weight:500}
+.envr .r2{display:block;font-size:.66rem;color:var(--ink3);margin-top:2px}
+.envr .ebar{display:block;height:6px;border-radius:3px;background:#E7ECE6;margin-top:6px;overflow:hidden}
+.envr .ebar i{display:block;height:100%;border-radius:3px;background:var(--green2)}
+.envr .ebar i.part{background:var(--brass)}
+.envr .ebar i.over{background:var(--red)}
+.envr .ebar i.paid{background:#1B6B45;opacity:.55}
+.envr.paid{background:#F7FBF8;border-left:3px solid #1B6B45;padding-left:9px;margin-left:-9px}
+.paidstamp{display:inline-block;font-size:.55rem;font-weight:800;letter-spacing:.09em;background:#DCEFE3;color:#1B6B45;
+  padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}
 .seg button{flex:1;padding:9px;border-radius:8px;font-weight:700;font-size:.8rem;color:var(--ink3)}
 .seg button.on{background:#fff;color:var(--green3);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .splitwrap{display:flex;gap:0;position:relative;margin-bottom:14px}
@@ -238,6 +281,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
   <section class="view" id="v-home">
     <div class="hometop"><div class="hello" id="hHello"></div><div class="hsub" id="hSub"></div></div>
     <div class="tiles" id="hTiles"></div>
+    <div class="drawer" id="hDrawer" style="display:none"></div>
     <div class="card gtoday" id="hTodayCard" style="display:none" onclick="go('bills')">
       <div class="eyebrow" style="margin-bottom:6px"><span id="hTodayLbl">Today &amp; next</span><span>All bills ›</span></div>
       <div id="hToday"></div>
@@ -270,9 +314,15 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
     </div>
     <div id="envNormalWrap">
     <div class="card">
-      <div class="kv"><span>Expected income</span><b id="envInc"></b></div>
-      <div class="kv"><span>Assigned to envelopes</span><b id="envAlloc"></b></div>
-      <div class="kv"><span id="envLeftLbl">Left to assign</span><b id="envLeft"></b></div>
+      <div class="kv"><span id="envIncLbl">Pay period deposit</span><button class="editval" onclick="editIncome()"><b id="envInc"></b> ✎</button></div>
+      <div class="kv"><span>Funded into envelopes</span><b id="envAlloc"></b></div>
+      <div class="kv"><span id="envLeftLbl">Left to fund</span><b id="envLeft"></b></div>
+      <div class="kv"><span>Left over this period</span><b id="envSpare"></b></div>
+    </div>
+    <button class="btn brass" style="width:100%;margin-bottom:9px" onclick="fillPeriod(curP()+viewP)">⚡ <span id="fillLbl">Fill envelopes to this period's targets</span></button>
+    <div id="catchUpWrap" style="display:none;margin-bottom:9px">
+      <button class="btn sec" style="width:100%" onclick="catchUpEarlyBills()">🛡️ <span id="catchUpLbl"></span></button>
+      <div class="muted" style="font-size:.7rem;margin-top:5px;padding:0 2px">One-time buffer so bills due the 1st–14th are covered before payday lands.</div>
     </div>
     <div class="row" style="margin-bottom:12px;gap:8px">
       <button class="btn sec sm" style="flex:1" onclick="copyPrevBudget()">⤺ Copy last period</button>
@@ -933,7 +983,10 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       </div>
       <div class="card">
         <div class="eyebrow" style="margin-bottom:10px">Budget setup</div>
-        <label class="f"><span>Income per paycheck</span><input class="in mono" id="setInc" inputmode="decimal" onchange="saveSettings()"></label>
+        <label class="f"><span>Deposit on the 1st</span><input class="in mono" id="setInc1" inputmode="decimal" onchange="saveSettings()"></label>
+        <label class="f"><span>Deposit on the 15th</span><input class="in mono" id="setInc15" inputmode="decimal" onchange="saveSettings()"></label>
+        <div class="kv" style="padding:8px 2px 0"><span class="muted">Monthly total</span><b class="mono" id="setIncTot"></b></div>
+        <input type="hidden" id="setInc">
         <div class="grid2">
           <label class="f" id="setAnchorWrap"><span>A recent payday</span><input class="in" type="date" id="setAnchor" onchange="saveSettings()"></label>
           <label class="f"><span>Pay cycle</span><select class="in" id="setFreq" onchange="saveSettings()">
@@ -1033,11 +1086,23 @@ function minPid(){let m=curP();Object.keys(data.budgets||{}).forEach(k=>m=Math.m
 
 /* ================= money math ================= */
 const envs=()=>Object.entries(data.env||{}).map(([id,e])=>({id,...e})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-function alloc(envId,p){const b=data.budgets?.[p]?.[envId];if(b!=null)return b;
-  const e=data.env?.[envId];if(e&&e.def&&e.startP!=null&&p>=e.startP)return e.def;return 0}
+/* FUNDED MODEL: an envelope holds only money explicitly put into it.
+   e.def = the per-period TARGET. budgets[p][id] = what's actually FUNDED. */
+function monthlyOf(e){return e.monthly!=null?e.monthly:Math.round((e.def||0)*(isSemi()?2:payPerMonth()))}
+function periodTarget(e,p){if(!e)return 0;
+  if(!isSemi())return e.def||0;
+  const m=monthlyOf(e),half=Math.floor(m/2);
+  // second half of the month absorbs the odd cent so the two halves sum exactly
+  const pid=(p==null?curP():p);
+  return (pid%2===0)?half:(m-half)}
+function alloc(envId,p){const b=data.budgets?.[p]?.[envId];return b!=null?b:0}
 function allocTotal(p){let s=0;for(const id of Object.keys(data.env||{}))s+=alloc(id,p);
-  // include any orphan budget entries for deleted envelopes so math stays honest
   for(const[id,v]of Object.entries(data.budgets?.[p]||{}))if(!data.env?.[id])s+=v;return s}
+function targetTotal(p){let s=0;for(const e of envs())s+=periodTarget(e,p);return s}
+function leftToFund(p){let s=0;for(const e of envs())s+=Math.max(0,periodTarget(e,p)-alloc(e.id,p));return s}
+function incomeFor(p){const s=data.settings;
+  if(isSemi()&&(s.income1!=null||s.income15!=null))return (p%2===0?(s.income1??s.income):(s.income15??s.income))||0;
+  return s.income||0}
 function txList(){return Object.entries(data.tx||{}).map(([id,t])=>({id,...t})).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))}
 function envFlow(envId,p){ // net spent (positive) in period p for envelope
   let s=0;for(const t of Object.values(data.tx||{})){if(pidOf(t.date)!==p)continue;
@@ -1048,10 +1113,25 @@ function envFlow(envId,p){ // net spent (positive) in period p for envelope
 function avail(envId,p){const e=data.env[envId];if(!e)return 0;
   if(e.roll||e.kind==='goal'){let s=0;for(let q=minPid();q<=p;q++)s+=alloc(envId,q)-envFlow(envId,q);return s}
   return alloc(envId,p)-envFlow(envId,p)}
-function toAssign(p){return (data.settings.income||0)-allocTotal(p)}
+function toAssign(p){return incomeFor(p)-allocTotal(p)}
 function spentPeriod(p){const bIds=billEnvIds();let s=0;for(const t of Object.values(data.tx||{}))if(t.kind==='exp'&&pidOf(t.date)===p&&!bIds.has(t.env))s+=t.amt;return s}
 function billEnvIds(){return new Set(Object.values(data.bills||{}).map(b=>b.env).filter(Boolean))}
 function safeToSpend(p){const bIds=billEnvIds();let s=0;for(const e of envs())if(e.kind!=='goal'&&!bIds.has(e.id))s+=Math.max(0,avail(e.id,p));return s}
+function inEnvelopes(p){let s=0;for(const e of envs())s+=avail(e.id,p);return s}
+/* --- funding actions --- */
+function fillPeriod(p){const ups={};for(const e of envs()){const t=periodTarget(e,p);if(t>0)ups[e.id]=t}
+  put('budgets/'+p,{...(data.budgets?.[p]||{}),...ups});
+  toast('Envelopes filled to this period\'s targets')}
+function earlyBillEnvs(){const out=[];for(const b of Object.values(data.bills||{}))
+  if(b.env&&data.env[b.env]&&b.day<15&&!out.includes(b.env))out.push(b.env);return out}
+function catchUpAmount(){const p=curP();let s=0;for(const id of earlyBillEnvs())s+=periodTarget(data.env[id],p);return s}
+function catchUpEarlyBills(){const p=curP(),ids=earlyBillEnvs();
+  if(!ids.length){toast('No early-month bills are linked to envelopes yet');return}
+  const total=catchUpAmount();
+  if(!confirm('Pre-load '+fmt(total)+' into your '+ids.length+' early-month bill envelopes?\n\nOne-time buffer so bills due the 1st–14th are covered before payday arrives. Use money already sitting in your account.'))return;
+  const cur={...(data.budgets?.[p]||{})};
+  for(const id of ids)cur[id]=(cur[id]||0)+periodTarget(data.env[id],p);
+  put('budgets/'+p,cur);toast('Buffered '+fmt(total)+' — early-month bills are covered')}
 
 /* ================= navigation ================= */
 const VIEWS=['home','env','bills','more','goals','debts','worth','reports','road','kids','give','trans','cal','subs','vault','tank','help'];
@@ -1091,21 +1171,82 @@ function txRow(t,showDel){const e=data.env[t.env];const sign=t.kind==='inc'?'+':
 function txTap(id){const t=data.tx[id];if(!t)return;
   if(confirm('Delete this entry?\n'+(t.payee||'')+' '+fmt(t.amt)))put('tx/'+id,null),toast('Deleted')}
 
-function envRowHTML(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);return envRowRaw(e,a,f,av)}
+function billForEnv(envId){for(const[id,b]of Object.entries(data.bills||{}))if(b.env===envId)return{id,...b};return null}
+function billPaidIn(b,p){if(!b||!b.paid)return false;
+  const s=pStart(p),key=ym(s);
+  if(!b.paid[key])return false;
+  return (b.day<15)===(p%2===0)}
+function envRowHTML(e,p){return envRowRaw(e,p)}
 function envRowHTMLMonth(e,ps){const a=ps.reduce((s,p)=>s+alloc(e.id,p),0),f=ps.reduce((s,p)=>s+envFlow(e.id,p),0);
-  const av=(e.roll||e.kind==='goal')?avail(e.id,ps[ps.length-1]):a-f;return envRowRaw(e,a,f,av)}
-function envRowRaw(e,a,f,av){
-  const denom=e.kind==='goal'?(e.target||1):(a||1);
-  const pct=Math.min(1,Math.max(0,(e.kind==='goal'?av:f)/denom));
-  const barCls=e.kind==='goal'?'goal':(av<0?'over':(a&&f/a>.85?'warn':''));
-  const availTxt=av<0?'<span class="neg-t">'+fmt(av)+' over</span>':fmt(av)+' left';
-  return '<button class="env" style="display:block;width:100%;text-align:left" onclick="openFund(\''+e.id+'\')">'+
-    '<span class="top"><span class="name">'+(e.kind==='goal'?'🎯 ':'')+esc(e.name)+'</span><span class="amt">'+fmt(av)+'</span></span>'+
-    '<span class="sub"><span>'+(e.kind==='goal'?('of '+fmt(e.target||0)+' target'):('assigned '+fmt(a)+' · spent '+fmt(f)))+'</span><span>'+(e.kind==='goal'?Math.round(pct*100)+'%':availTxt)+'</span></span>'+
-    '<span class="bar"><i class="'+barCls+'" style="width:'+(pct*100)+'%"></i></span></button>'}
+  const av=(e.roll||e.kind==='goal')?avail(e.id,ps[ps.length-1]):a-f;
+  return envRowCard(e,a,f,av,ps.reduce((s,q)=>s+periodTarget(e,q),0),null)}
+function envRowRaw(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p),t=periodTarget(e,p);
+  const bill=billForEnv(e.id);
+  return envRowCard(e,a,f,av,t,bill?{bill,paid:billPaidIn(bill,p)}:null)}
+function envRowCard(e,a,f,av,t,bi){
+  const isBill=!!bi,isGoal=e.kind==='goal';
+  let main,sub,pct,cls;
+  if(isBill){
+    main=fmt(a)+'<span class="of"> / '+fmt(t)+'</span>';
+    pct=t?Math.min(1,a/t):0;cls=bi.paid?'paid':(a>=t?'':'part');
+    sub=bi.paid?'paid ✓ · stays funded':(a>=t?'fully funded · due the '+ordSuf(bi.bill.day):Math.round(pct*100)+'% funded · due the '+ordSuf(bi.bill.day));
+  }else if(isGoal){
+    main=fmt(av)+'<span class="of"> / '+fmt(e.target||0)+'</span>';
+    pct=e.target?Math.min(1,av/e.target):0;cls='';
+    sub=Math.round(pct*100)+'% of target'+(t?' · '+fmt(t)+' per period':'');
+  }else{
+    main=fmt(av)+'<span class="of"> left</span>';
+    pct=a?Math.min(1,f/a):0;cls=av<0?'over':(a&&f/a>.85?'part':'');
+    sub=a<t?('funded '+fmt(a)+' of '+fmt(t)+' · spent '+fmt(f)):('funded '+fmt(a)+' · spent '+fmt(f));
+  }
+  return '<button class="envr'+(bi&&bi.paid?' paid':'')+'" onclick="openFund(\''+e.id+'\')">'+
+    '<span class="r1"><span class="nm">'+(isGoal?'🎯 ':'')+esc(e.name)+(bi&&bi.paid?'<span class="paidstamp">PAID ✓</span>':'')+'</span>'+
+    '<span class="fr">'+main+'</span></span>'+
+    '<span class="r2">'+sub+'</span>'+
+    '<span class="ebar"><i class="'+cls+'" style="width:'+(pct*100)+'%"></i></span></button>'}
 
+let hTile=0;
+function tapTile(n){hTile=(hTile===n)?0:n;renderHome()}
+function tileHTML(n,cls,eb,big,st){return '<button class="tile '+cls+(hTile===n?' sel':'')+'" onclick="tapTile('+n+')">'+
+  '<span class="eb">'+eb+'</span><span class="big">'+big+'</span><span class="st">'+st+'</span><span class="chev">tap ›</span></button>'}
+function drow(label,sub,val,cls){return '<div class="drow'+(cls?' '+cls:'')+'"><span>'+label+
+  (sub?'<span class="sm">'+sub+'</span>':'')+'</span><b>'+val+'</b></div>'}
+function renderHomeDrawer(p){const d=$('#hDrawer');
+  if(!hTile){d.style.display='none';return}
+  d.style.display='block';const bIds=billEnvIds();let h='',title='';
+  if(hTile===1){title='Safe to spend — every discretionary envelope';
+    const list=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id))
+      .map(e=>({e,a:alloc(e.id,p),f:envFlow(e.id,p),av:avail(e.id,p)}))
+      .sort((x,y)=>(x.a?x.f/x.a:0)<(y.a?y.f/y.a:0)?1:-1);
+    h=list.map(x=>drow(esc(x.e.name),
+      'funded '+fmt(x.a)+' · spent '+fmt(x.f)+(x.a?' · '+Math.round(x.f/x.a*100)+'%':''),
+      fmt(x.av),(x.a&&x.f/x.a>.7)?'hot':(x.f===0?'zero':''))).join('');
+    const tf=list.reduce((s,x)=>s+x.a,0),ts=list.reduce((s,x)=>s+x.f,0);
+    h+=drow('<b>Safe to spend</b>','funded '+fmt(tf)+' − spent '+fmt(ts)+' · bills &amp; goals excluded',fmt(safeToSpend(p)),'dtot')}
+  else if(hTile===2){title='Left to fund — '+periodName(p);
+    const unf=envs().map(e=>({e,gap:Math.max(0,periodTarget(e,p)-alloc(e.id,p))})).filter(x=>x.gap>0)
+      .sort((a,b)=>b.gap-a.gap);
+    h=drow(periodName(p)+' deposit','',fmt(incomeFor(p)))+
+      drow('Funded into envelopes','',fmt(allocTotal(p)));
+    h+=unf.length?unf.slice(0,8).map(x=>drow(esc(x.e.name),'still needs',fmt(x.gap))).join(''):
+      drow('All envelopes funded','','$0.00 ✓');
+    h+=drow('<b>Left over</b>','unassigned this period',fmt(incomeFor(p)-allocTotal(p)),'dtot')}
+  else if(hTile===3){title='In envelopes — every dollar you hold';
+    const spend=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id)).reduce((s,e)=>s+avail(e.id,p),0);
+    const billm=envs().filter(e=>bIds.has(e.id)).reduce((s,e)=>s+avail(e.id,p),0);
+    const goalm=envs().filter(e=>e.kind==='goal').reduce((s,e)=>s+avail(e.id,p),0);
+    h=drow('Discretionary','spendable right now',fmt(spend))+
+      drow('Bill envelopes','committed — already promised',fmt(billm))+
+      drow('Goals &amp; sinking funds','long game',fmt(goalm))+
+      drow('<b>Total across all envelopes</b>','should match your bank balance',fmt(spend+billm+goalm),'dtot')}
+  else if(hTile===4){title='Tightest envelope right now';
+    const list=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id)&&alloc(e.id,p)>0)
+      .map(e=>({e,a:alloc(e.id,p),f:envFlow(e.id,p),av:avail(e.id,p)}))
+      .sort((x,y)=>(y.f/y.a)-(x.f/x.a)).slice(0,5);
+    h=list.length?list.map(x=>drow(esc(x.e.name),Math.round(x.f/x.a*100)+'% spent',fmt(x.av),
+      x.f/x.a>.7?'hot':'')).join(''):drow('Nothing funded yet','fill your envelopes first','—')}
+  d.innerHTML='<div class="dh"><span class="dt">'+title+'</span><span class="dx">✕ tap tile to close</span></div>'+h}
 function renderHome(){const p=curP();
-  // greeting + period position
   const name=data.members?.[cfg.member]?.name||'';
   const hr=new Date().getHours();const g=hr<12?T('g.m'):hr<18?T('g.a'):T('g.e');
   $('#hHello').textContent=g+(name?', '+name:'');
@@ -1114,23 +1255,21 @@ function renderHome(){const p=curP();
   const dayN=Math.floor((now-ps)/864e5)+1,totalD=Math.round((pe-ps)/864e5)+1;
   const daysToPay=Math.max(0,Math.round((np-now)/864e5));
   $('#hSub').textContent=now.toLocaleDateString(loc,{weekday:'long',month:'short',day:'numeric'})+' · '+
-    T('g.day')+' '+dayN+' '+T('g.of')+' '+totalD+' · '+T('g.next')+' '+np.toLocaleDateString(loc,{month:'short',day:'numeric'});
-  // tile 1: safe to spend + plan state
-  const ta=toAssign(p);
-  const overEnv=envs().find(e=>e.kind!=='goal'&&avail(e.id,p)<0);
-  let s1='ok',st1=T('g.onplan');
-  if(overEnv){s1='over';st1=esc(overEnv.name)+' '+T('g.over')}
-  else if(ta>0){s1='warn';st1=fmt0(ta)+' '+T('g.toassign')}
-  let t1='<div class="tile '+s1+'"><div class="eyebrow">'+T('g.safe')+'</div><div class="big">'+fmt0(safeToSpend(p))+'</div><div class="st">'+st1+'</div></div>';
-  // tile 2: tightest envelope, else spent this period
-  const sp=envs().filter(e=>e.kind!=='goal'&&alloc(e.id,p)>0)
-    .map(e=>({e,av:avail(e.id,p),a:alloc(e.id,p)})).sort((x,y)=>(x.av/x.a)-(y.av/y.a));
-  let t2;
-  if(sp.length){const x=sp[0];const cls=x.av<0?'over':(x.av/x.a<.25?'warn':'ok');
-    t2='<div class="tile '+cls+'"><div class="eyebrow">'+esc(x.e.name)+' '+T('g.left')+'</div><div class="big">'+fmt0(x.av)+'</div><div class="st">'+daysToPay+' '+T('g.dayspay')+'</div></div>'}
-  else t2='<div class="tile ok"><div class="eyebrow">'+T('g.spent')+'</div><div class="big">'+fmt0(spentPeriod(p))+'</div><div class="st">'+pLabel(p)+'</div></div>';
-  $('#hTiles').innerHTML=t1+t2;
-  // today & next card
+    periodName(p)+' · '+T('g.day')+' '+dayN+' '+T('g.of')+' '+totalD;
+  // four tiles
+  const sts=safeToSpend(p),ltf=leftToFund(p),ine=inEnvelopes(p),bIds=billEnvIds();
+  const tight=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id)&&alloc(e.id,p)>0)
+    .map(e=>({e,a:alloc(e.id,p),f:envFlow(e.id,p),av:avail(e.id,p)}))
+    .sort((x,y)=>(y.f/y.a)-(x.f/x.a))[0];
+  let t=tileHTML(1,'ok',T('g.safe'),fmt0(sts),sts>0?'▲ '+T('g.onplan'):'nothing funded yet');
+  t+=tileHTML(2,ltf>0?'warn':'ok','Left to fund',ltf>0?fmt0(ltf):'$0',ltf>0?'this pay period':'✓ fully funded');
+  t+=tileHTML(3,'blue','In envelopes',fmt0(ine),'across '+envs().length+' envelopes');
+  t+=tight?tileHTML(4,(tight.f/tight.a>.7)?'warn':'ok',esc(tight.e.name)+' left',fmt0(tight.av),
+      Math.round(tight.f/tight.a*100)+'% used · '+daysToPay+' days to payday')
+    :tileHTML(4,'ok','Spent this period',fmt0(spentPeriod(p)),pLabel(p));
+  $('#hTiles').innerHTML=t;
+  renderHomeDrawer(p);
+  // today & next
   const rows=[];
   upcomingBills(7).slice(0,3).forEach(b=>{const dd=Math.round((b.due-now)/864e5);
     const when=dd<=0?T('g.today2'):dd===1?T('g.tomorrow'):b.due.toLocaleDateString(loc,{weekday:'short'});
@@ -1142,7 +1281,6 @@ function renderHome(){const p=curP();
   $('#hTodayCard').style.display=rows.length?'':'none';
   $('#hToday').innerHTML=rows.join('');
   $('#hTodayLbl').textContent=T('g.todaynext');
-  // envelopes + activity (unchanged)
   const es=envs().filter(e=>e.kind!=='goal').map(e=>({e,av:avail(e.id,p),a:alloc(e.id,p)}))
     .sort((x,y)=>x.av-y.av).slice(0,5);
   $('#hEnv').innerHTML=es.length?es.map(x=>envRowHTML(x.e,p)).join(''):
@@ -1198,15 +1336,33 @@ function renderEnvView(){
   if(envViewMode==='split'){renderEnvViewSplit();return}
   if(envViewMode==='month'){renderEnvViewMonth();return}
   const p=curP()+viewP;
-  $('#envPeriodLbl').textContent=pLabel(p)+(viewP===0?' · now':'');
-  $('#envInc').textContent=fmt(data.settings.income||0);
+  $('#envPeriodLbl').textContent=periodName(p)+(viewP===0?' · now':'');
+  $('#envIncLbl').textContent=periodName(p)+' deposit';
+  $('#envInc').textContent=fmt(incomeFor(p));
   $('#envAlloc').textContent=fmt(allocTotal(p));
-  const ta=toAssign(p);const l=$('#envLeft');l.textContent=fmt(Math.abs(ta));
-  l.className=ta===0?'pos-t':ta>0?'amber-t':'neg-t';
-  $('#envLeftLbl').textContent=ta>=0?'Left to assign':'Over-assigned';
+  const ltf=leftToFund(p);const l=$('#envLeft');
+  l.textContent=ltf===0?'$0.00 ✓':fmt(ltf);
+  l.className=ltf===0?'pos-t':'amber-t';
+  const spare=incomeFor(p)-allocTotal(p);
+  const sp2=$('#envSpare');sp2.textContent=fmt(spare);
+  sp2.className=spare<0?'neg-t':'';
+  $('#fillLbl').textContent=ltf>0?('Fill envelopes — '+fmt(ltf)+' to go'):'Envelopes fully funded ✓';
+  const cu=catchUpAmount();
+  $('#catchUpWrap').style.display=(cu>0&&viewP===0)?'block':'none';
+  $('#catchUpLbl').textContent='Buffer early-month bills — '+fmt(cu);
   const sp=envs().filter(e=>e.kind!=='goal'),gl=envs().filter(e=>e.kind==='goal');
   $('#envList').innerHTML=sp.length?sp.map(e=>envRowHTML(e,p)).join(''):'<div class="empty">Add envelopes for groceries, gas, fun money…</div>';
   $('#envGoalList').innerHTML=gl.length?gl.map(e=>envRowHTML(e,p)).join(''):'<div class="empty">Sinking funds live here — car repairs, Christmas, PCS moves.</div>'}
+function periodName(p){if(!isSemi())return pLabel(p);
+  const s=pStart(p);return s.toLocaleDateString('en-US',{month:'short'})+' '+s.getDate()+' pay period'}
+function editIncome(){const p=curP()+viewP;const cur=incomeFor(p)/100;
+  const v=prompt(periodName(p)+' deposit amount:',cur||'');
+  if(v===null)return;const c=toC(v);
+  if(isSemi()){put('settings/'+(p%2===0?'income1':'income15'),c);
+    if(data.settings.income1==null)put('settings/income1',c);
+    if(data.settings.income15==null)put('settings/income15',data.settings.income||c)}
+  else put('settings/income',c);
+  toast('Deposit updated')}
 function renderEnvViewMonth(){
   const ref=new Date();ref.setDate(1);ref.setMonth(ref.getMonth()+viewP);
   const ps=periodsInMonth(ref);
@@ -1230,6 +1386,13 @@ function nextDue(b){const n=new Date();
 function daysInMonth(d){return new Date(d.getFullYear(),d.getMonth()+1,0).getDate()}
 function ym(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function isPaid(b,d){return !!(b.paid&&b.paid[ym(d)])}
+/* which occurrence a "Pay" tap settles: this month's if still unpaid (even if a day or
+   two past due), otherwise next month's. nextDue() stays for display. */
+function dueToPay(b){const n=new Date();
+  const cur=new Date(n.getFullYear(),n.getMonth(),Math.min(b.day,daysInMonth(n)));
+  if(!isPaid(b,cur))return cur;
+  const m=new Date(n.getFullYear(),n.getMonth()+1,1);
+  return new Date(m.getFullYear(),m.getMonth(),Math.min(b.day,daysInMonth(m)))}
 function upcomingBills(days){const now=new Date();const lim=new Date(now.getTime()+days*864e5);
   return bills().map(b=>({...b,due:nextDue(b)})).filter(b=>b.due<=lim&&!isPaid(b,b.due)).sort((a,b)=>a.due-b.due)}
 function billRow(b){const due=b.due||nextDue(b);const paid=isPaid(b,due);
@@ -1238,16 +1401,23 @@ function billRow(b){const due=b.due||nextDue(b);const paid=isPaid(b,due);
   return '<div class="tx"><span class="iconb">'+(paid?'✅':'📄')+'</span>'+
     '<span class="mid"><span class="p"'+(paid?' style="text-decoration:line-through;color:var(--ink3)"':'')+'>'+esc(b.name)+'</span><br><span class="s '+(dd<=1&&!paid?'neg-t':'')+'">'+when+' · '+esc(data.env[b.env]?.name||'no envelope')+'</span></span>'+
     '<span class="a">'+fmt(b.amt)+'</span>'+
-    (paid?'<button class="btn ghost sm" onclick="openBillForm(\''+b.id+'\')">✎</button>':
+    (paid?'<button class="btn ghost sm" onclick="unpayBill(\''+b.id+'\')">↺ Undo</button>':
     '<button class="btn sec sm" onclick="payBill(\''+b.id+'\')">Pay</button>'+
     '<button class="btn ghost sm" onclick="openBillForm(\''+b.id+'\')">✎</button>')+'</div>'}
 function renderBills(){const bs=bills().map(b=>({...b,due:nextDue(b)}));
   const tot=bs.reduce((s,b)=>s+b.amt,0);
   $('#billTotals').textContent=bs.length?bs.length+' bills · '+fmt(tot)+' / month':'';
   $('#billList').innerHTML=bs.length?bs.map(b=>billRow(b)).join(''):'<div class="empty">Add your recurring bills to never miss a due date.</div>'}
-function payBill(id){const b=data.bills[id];if(!b)return;const due=nextDue(b);
+function payBill(id){const b=data.bills[id];if(!b)return;const due=dueToPay(b);
   const txId=uid();put('tx/'+txId,{kind:'exp',amt:b.amt,env:b.env||null,payee:b.name,date:today(),who:cfg.member,note:'Bill'});
   put('bills/'+id+'/paid/'+ym(due),txId);toast(b.name+' marked paid')}
+function unpayBill(id){const b=data.bills[id];if(!b||!b.paid)return;
+  const keys=Object.keys(b.paid).sort();const key=keys[keys.length-1];
+  if(!key)return;const txId=b.paid[key];
+  if(!confirm('Undo this payment? The logged transaction will be removed too.'))return;
+  if(txId)put('tx/'+txId,null);
+  put('bills/'+id+'/paid/'+key,null);
+  toast(b.name+' marked unpaid')}
 
 /* ---- goals ---- */
 function renderGoals(){renderAnnual();const p=curP();const gl=envs().filter(e=>e.kind==='goal');
@@ -1501,15 +1671,16 @@ function pickEmergency(){const gl=envs().filter(e=>e.kind==='goal');
   $('#emMonths').value=data.settings.emMonths||3;
   $('#emTarget').value=data.settings.emTarget?(data.settings.emTarget/100):'';
   openSheet('shEmerg')}
-function saveEmergency(){let v=$('#emGoal').value;
-  put('settings/emMonths',+$('#emMonths').value||3);
-  put('settings/emTarget',toC($('#emTarget').value)||null);
-  if(v==='_new'){const target=emTargetC();
+function saveEmergency(){
+  const sel=$('#emGoal').value,months=+$('#emMonths').value||3,manual=toC($('#emTarget').value)||null;
+  let v=sel;
+  if(v==='_new'){const target=manual||(monthlyNeed()*months);
     if(!target){toast('Type a target amount above — with no bills or envelopes yet, I can\'t auto-compute one');
       $('#emTarget').focus();return}
     const id=uid();
     put('env/'+id,{name:'Emergency Fund',kind:'goal',roll:true,startP:curP(),target,targetDate:null});v=id;
     toast('Emergency Fund created — '+fmt0(target)+' target. Fund it on the Budget tab')}
+  put('settings/emMonths',months);put('settings/emTarget',manual);
   put('settings/emergencyEnv',v||null);closeSheet('shEmerg')}
 function editMonthly(){const v=prompt('Your monthly essentials (bills + core spending). Leave blank to auto-estimate.',data.settings.monthlyExp?(data.settings.monthlyExp/100):'');
   if(v===null)return;put('settings/monthlyExp',v.trim()?toC(v):0);toast('Updated')}
@@ -1540,17 +1711,22 @@ function renderNWGoal(){const tgt=data.settings.nwTarget||0;const b=$('#nwGoalBo
   b.innerHTML='<div class="row" style="align-items:baseline;gap:8px"><div class="big">'+Math.round(pct*100)+'%</div><div class="muted">of '+fmt0(tgt)+'</div></div>'+
     '<div class="bar" style="margin-top:8px"><i class="goal" style="width:'+(pct*100)+'%"></i></div>'+(sub?'<div class="muted" style="margin-top:8px">'+sub+'</div>':'')}
 function openNWGoal(){$('#nwgTarget').value=(data.settings.nwTarget||0)/100||'';$('#nwgDate').value=data.settings.nwDate||'';openSheet('shNWGoal')}
-function saveNWGoal(){put('settings/nwTarget',toC($('#nwgTarget').value));put('settings/nwDate',$('#nwgDate').value||null);closeSheet('shNWGoal');toast('Goal saved')}
+function saveNWGoal(){const t=toC($('#nwgTarget').value),d=$('#nwgDate').value||null;
+  put('settings/nwTarget',t);put('settings/nwDate',d);closeSheet('shNWGoal');toast('Goal saved')}
 function monthsBetween(a,b){return (b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth())}
 
 /* ================= TRANSITION RUNWAY ================= */
-function saveTrans(){put('settings/retDate',$('#trDate').value||null);put('settings/trMonths',+$('#trMonths').value||6);
-  put('settings/retIncome',toC($('#trIncome').value));
-  let v=$('#trEnv').value;
-  if(v==='_new'){const id=uid();const target=monthlyNeed()*(+$('#trMonths').value||6);
-    put('env/'+id,{name:'Transition Runway',kind:'goal',roll:true,startP:curP(),target:target||null,targetDate:data.settings.retDate?(data.settings.retDate+'-01'):null});v=id;
-    toast('Transition Runway goal created — fund it on the Budget tab')}
-  put('settings/transEnv',v||null)}
+function saveTrans(){
+  // read EVERY field first — any put() re-renders and would clobber the rest
+  const date=$('#trDate').value||null, months=+$('#trMonths').value||6,
+        income=toC($('#trIncome').value), sel=$('#trEnv').value;
+  let v=sel;
+  if(v==='_new'){const id=uid();const need=monthlyNeed();const target=need*months;
+    put('env/'+id,{name:'Transition Runway',kind:'goal',roll:true,startP:curP(),
+      target:target||null,targetDate:date?(date+'-01'):null});
+    v=id;toast(target?('Transition Runway created — '+fmt0(target)+' target'):'Transition Runway created — set your monthly expenses to compute a target')}
+  put('settings/retDate',date);put('settings/trMonths',months);
+  put('settings/retIncome',income);put('settings/transEnv',v||null)}
 function renderTrans(){const s=data.settings;
   $('#trDate').value=s.retDate||'';$('#trMonths').value=s.trMonths||6;
   $('#trIncome').value=(s.retIncome||0)/100||'';
@@ -1944,7 +2120,11 @@ function renderSettings(){const setup=!cfg.mode;
   $('#setCode').textContent=cfg.code?('#'+cfg.code):'local only';
   $('#setSync').textContent=cfg.mode==='cloud'?'Firebase live':'this device';
   $('#setMe').textContent=data.members[cfg.member]?.name||'—';
-  $('#setInc').value=(data.settings.income||0)/100||'';
+  const s=data.settings;const i1=s.income1??s.income??0,i15=s.income15??s.income??0;
+  $('#setInc').value=(s.income||0)/100||'';
+  $('#setInc1').value=i1/100||'';
+  $('#setInc15').value=i15/100||'';
+  $('#setIncTot').textContent=fmt(i1+i15);
   $('#setAnchor').value=data.settings.anchor||today();
   $('#setFreq').value=data.settings.freq||'semi';
   $('#setAnchorWrap').style.display=isSemi()?'none':'block';
@@ -1960,9 +2140,13 @@ function deleteMember(id){const m=data.members[id];if(!m)return;
   if(Object.keys(data.members).length<=1)return toast('Can\'t remove the only member');
   if(!confirm('Remove "'+m.name+'" from the household?\n\nTheir logged transactions stay in the history. If this is a duplicate of you, make sure the one marked "(you)" is the one you keep.'))return;
   put('members/'+id,null);toast(m.name+' removed')}
-function saveSettings(){put('settings/income',toC($('#setInc').value));
-  const fv=$('#setFreq').value;put('settings/freq',fv==='semi'?'semi':(+fv||14));
-  put('settings/anchor',$('#setAnchor').value||today());
+function saveSettings(){
+  const i1=toC($('#setInc1').value),i15=toC($('#setInc15').value),
+        fv=$('#setFreq').value,anch=$('#setAnchor').value||today();
+  put('settings/income1',i1);put('settings/income15',i15);
+  put('settings/income',i1||i15);
+  put('settings/freq',fv==='semi'?'semi':(+fv||14));
+  put('settings/anchor',anch);
   $('#setAnchorWrap').style.display=fv==='semi'?'none':'block';toast('Saved')}
 function addMember(){const n=$('#newMember').value.trim();if(!n)return;
   put('members/'+uid(),{name:n});$('#newMember').value='';toast(n+' added')}
