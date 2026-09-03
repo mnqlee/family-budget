@@ -180,15 +180,10 @@ input[type=date].in,input[type=month].in{min-height:47px;-webkit-appearance:none
 .splitcol .tot{font-family:'IBM Plex Mono',monospace;font-size:.9rem;font-weight:600;margin-top:5px}
 .splitcol .totlbl{font-size:.54rem;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
 .splitcol .grp{font-size:.56rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin:11px 0 5px 2px}
-.splitcol .senv{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:8px 9px;margin-bottom:6px;cursor:pointer;display:block;width:100%;text-align:left}
-.splitcol .senv .nm{font-size:.7rem;font-weight:700;line-height:1.2}
-.splitcol .senv .row{display:flex;justify-content:space-between;align-items:baseline;margin-top:2px}
-.splitcol .senv .amt{font-family:'IBM Plex Mono',monospace;font-size:.76rem;font-weight:600}
-.splitcol .senv .of{font-size:.58rem;color:var(--ink3)}
-.splitcol .senv .bar{height:3.5px;border-radius:2px;background:#E7ECE6;margin-top:5px}
-.splitcol .senv .bar i{display:block;height:100%;border-radius:2px;background:var(--green2)}
-.splitcol .senv .bar i.warn{background:var(--amber)}
-.splitcol .senv .bar i.over{background:var(--red)}
+.splitcol .envr{padding:7px 0}
+.splitcol .envr .nm{font-size:.7rem}
+.splitcol .envr .fr{font-size:.72rem}
+.splitcol .envr .r2{font-size:.58rem}
 
 /* ---------- bottom nav ---------- */
 nav.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--green);display:flex;z-index:40;
@@ -320,10 +315,6 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <div class="kv"><span>Left over this period</span><b id="envSpare"></b></div>
     </div>
     <button class="btn brass" style="width:100%;margin-bottom:9px" onclick="fillPeriod(curP()+viewP)">⚡ <span id="fillLbl">Fill envelopes to this period's targets</span></button>
-    <div id="catchUpWrap" style="display:none;margin-bottom:9px">
-      <button class="btn sec" style="width:100%" onclick="catchUpEarlyBills()">🛡️ <span id="catchUpLbl"></span></button>
-      <div class="muted" style="font-size:.7rem;margin-top:5px;padding:0 2px">One-time buffer so bills due the 1st–14th are covered before payday lands.</div>
-    </div>
     <div class="row" style="margin-bottom:12px;gap:8px">
       <button class="btn sec sm" style="flex:1" onclick="copyPrevBudget()">⤺ Copy last period</button>
       <button class="btn sec sm" style="flex:1" onclick="openMove()">⇄ Move money</button>
@@ -678,11 +669,26 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
         <label class="f"><span>Target date</span><input class="in" type="date" id="efTargetDate"></label>
       </div>
     </div>
+    <div id="efBillNote" style="display:none;background:var(--brassbg);border-radius:12px;padding:12px;margin-bottom:12px">
+      <div style="font-weight:700;font-size:.85rem;margin-bottom:3px">🔗 Linked to a bill</div>
+      <div class="muted" style="font-size:.8rem;margin-bottom:8px">This envelope automatically funds the full <b id="efBillNoteAmt"></b> from whichever payday comes before it's due — no manual amount to set here. To change what's owed, edit the bill itself.</div>
+      <button class="btn sec sm" onclick="editBillFromEnv()">Edit the bill amount →</button>
+    </div>
+    <div id="efPayFields">
     <div class="grid2">
       <label class="f"><span>Assign each paycheck</span><input class="in mono" id="efDef" inputmode="decimal" oninput="efConv('pay')"></label>
       <label class="f"><span>≈ per month</span><input class="in mono" id="efDefMo" inputmode="decimal" oninput="efConv('mo')"></label>
     </div>
     <div class="muted" id="efWeekHint" style="margin:-6px 0 12px"></div>
+    <label class="f" id="efFundWrap"><span>Funds from</span>
+      <div class="chips">
+        <button class="c" id="efFundBoth" onclick="efSetFundFrom('both')">Both paydays</button>
+        <button class="c" id="efFund1" onclick="efSetFundFrom('1st')">Only the 1st</button>
+        <button class="c" id="efFund15" onclick="efSetFundFrom('15th')">Only the 15th</button>
+      </div>
+      <div class="muted" style="margin-top:6px;font-size:.72rem" id="efFundHint"></div>
+    </label>
+    </div>
     <label class="f" id="efRollWrap"><span>Leftover money</span>
       <div class="chips">
         <button class="c" id="efRoll1" onclick="efSetRoll(true)">Rolls over</button>
@@ -1090,10 +1096,17 @@ const envs=()=>Object.entries(data.env||{}).map(([id,e])=>({id,...e})).sort((a,b
    e.def = the per-period TARGET. budgets[p][id] = what's actually FUNDED. */
 function monthlyOf(e){return e.monthly!=null?e.monthly:Math.round((e.def||0)*(isSemi()?2:payPerMonth()))}
 function periodTarget(e,p){if(!e)return 0;
-  if(!isSemi())return e.def||0;
-  const m=monthlyOf(e),half=Math.floor(m/2);
-  // second half of the month absorbs the odd cent so the two halves sum exactly
   const pid=(p==null?curP():p);
+  const bill=billForEnv(e.id);
+  if(bill){ // bill envelopes: fund the FULL amount, once, from the one payday that precedes the due date
+    if(!isSemi())return bill.amt;
+    const needsFirstHalf=(bill.day>=15); // due 15th–end needs money from the 1st's payday
+    return (needsFirstHalf===(pid%2===0))?bill.amt:0}
+  if(!isSemi())return e.def||0;
+  const m=monthlyOf(e);
+  if(e.fundFrom==='1st')return (pid%2===0)?m:0;
+  if(e.fundFrom==='15th')return (pid%2===1)?m:0;
+  const half=Math.floor(m/2);
   return (pid%2===0)?half:(m-half)}
 function alloc(envId,p){const b=data.budgets?.[p]?.[envId];return b!=null?b:0}
 function allocTotal(p){let s=0;for(const id of Object.keys(data.env||{}))s+=alloc(id,p);
@@ -1122,17 +1135,6 @@ function inEnvelopes(p){let s=0;for(const e of envs())s+=avail(e.id,p);return s}
 function fillPeriod(p){const ups={};for(const e of envs()){const t=periodTarget(e,p);if(t>0)ups[e.id]=t}
   put('budgets/'+p,{...(data.budgets?.[p]||{}),...ups});
   toast('Envelopes filled to this period\'s targets')}
-function earlyBillEnvs(){const out=[];for(const b of Object.values(data.bills||{}))
-  if(b.env&&data.env[b.env]&&b.day<15&&!out.includes(b.env))out.push(b.env);return out}
-function catchUpAmount(){const p=curP();let s=0;for(const id of earlyBillEnvs())s+=periodTarget(data.env[id],p);return s}
-function catchUpEarlyBills(){const p=curP(),ids=earlyBillEnvs();
-  if(!ids.length){toast('No early-month bills are linked to envelopes yet');return}
-  const total=catchUpAmount();
-  if(!confirm('Pre-load '+fmt(total)+' into your '+ids.length+' early-month bill envelopes?\n\nOne-time buffer so bills due the 1st–14th are covered before payday arrives. Use money already sitting in your account.'))return;
-  const cur={...(data.budgets?.[p]||{})};
-  for(const id of ids)cur[id]=(cur[id]||0)+periodTarget(data.env[id],p);
-  put('budgets/'+p,cur);toast('Buffered '+fmt(total)+' — early-month bills are covered')}
-
 /* ================= navigation ================= */
 const VIEWS=['home','env','bills','more','goals','debts','worth','reports','road','kids','give','trans','cal','subs','vault','tank','help'];
 function go(v){VIEWS.forEach(x=>{const el=$('#v-'+x);if(el)el.classList.toggle('on',x===v)});
@@ -1179,24 +1181,28 @@ function billPaidIn(b,p){if(!b||!b.paid)return false;
 function envRowHTML(e,p){return envRowRaw(e,p)}
 function envRowHTMLMonth(e,ps){const a=ps.reduce((s,p)=>s+alloc(e.id,p),0),f=ps.reduce((s,p)=>s+envFlow(e.id,p),0);
   const av=(e.roll||e.kind==='goal')?avail(e.id,ps[ps.length-1]):a-f;
-  return envRowCard(e,a,f,av,ps.reduce((s,q)=>s+periodTarget(e,q),0),null)}
-function envRowRaw(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p),t=periodTarget(e,p);
   const bill=billForEnv(e.id);
+  return envRowCard(e,a,f,av,bill?bill.amt:monthlyOf(e),bill?{bill,paid:ps.some(p=>billPaidIn(bill,p))}:null)}
+function envRowRaw(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
+  const bill=billForEnv(e.id);
+  const t=bill?bill.amt:monthlyOf(e); // display target: real bill amount, or the full monthly need
   return envRowCard(e,a,f,av,t,bill?{bill,paid:billPaidIn(bill,p)}:null)}
 function envRowCard(e,a,f,av,t,bi){
   const isBill=!!bi,isGoal=e.kind==='goal';
   let main,sub,pct,cls;
+  pct=av<0?1:(t?Math.min(1,av/t):0);
   if(isBill){
     main=fmt(a)+'<span class="of"> / '+fmt(t)+'</span>';
-    pct=t?Math.min(1,a/t):0;cls=bi.paid?'paid':(a>=t?'':'part');
-    sub=bi.paid?'paid ✓ · stays funded':(a>=t?'fully funded · due the '+ordSuf(bi.bill.day):Math.round(pct*100)+'% funded · due the '+ordSuf(bi.bill.day));
+    cls=bi.paid?'paid':(av<0?'over':(pct<=0.25?'part':''));
+    sub=bi.paid?'paid ✓ · stays funded':(a>=t?'fully funded · due the '+ordSuf(bi.bill.day):Math.round(a/t*100)+'% funded · due the '+ordSuf(bi.bill.day));
   }else if(isGoal){
     main=fmt(av)+'<span class="of"> / '+fmt(e.target||0)+'</span>';
-    pct=e.target?Math.min(1,av/e.target):0;cls='';
-    sub=Math.round(pct*100)+'% of target'+(t?' · '+fmt(t)+' per period':'');
+    const gpct=av<0?1:(e.target?Math.min(1,av/e.target):0);
+    pct=gpct;cls=av<0?'over':(gpct<=0.25?'part':'');
+    sub=Math.round(gpct*100)+'% of target'+(t?' · '+fmt(t)+' per period':'');
   }else{
     main=fmt(av)+'<span class="of"> left</span>';
-    pct=a?Math.min(1,f/a):0;cls=av<0?'over':(a&&f/a>.85?'part':'');
+    cls=av<0?'over':(pct<=0.25?'part':'');
     sub=a<t?('funded '+fmt(a)+' of '+fmt(t)+' · spent '+fmt(f)):('funded '+fmt(a)+' · spent '+fmt(f));
   }
   return '<button class="envr'+(bi&&bi.paid?' paid':'')+'" onclick="openFund(\''+e.id+'\')">'+
@@ -1298,14 +1304,6 @@ function periodsInMonth(refDate){const y=refDate.getFullYear(),m=refDate.getMont
   return out.sort((a,b)=>a-b)}
 function ordSuf(d){const v=d%100;if(v>=11&&v<=13)return d+'th';
   switch(d%10){case 1:return d+'st';case 2:return d+'nd';case 3:return d+'rd';default:return d+'th'}}
-function splitEnvRow(e,p,bill){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
-  const denom=bill?(a||1):(a||1);const pct=Math.min(1,Math.max(0,f/denom));
-  const barCls=av<0?'over':(a&&f/a>.85?'warn':'');
-  const sub=bill?('due the '+ordSuf(bill.day)+(isPaid(bill,pStart(p))?' ✓':'')):('of '+fmt(a));
-  return '<button class="senv" onclick="openFund(\''+e.id+'\')">'+
-    '<div class="nm">'+esc(e.name)+'</div>'+
-    '<div class="row"><span class="amt">'+fmt(av)+(bill?'':' left')+'</span><span class="of">'+sub+'</span></div>'+
-    '<div class="bar"><i class="'+barCls+'" style="width:'+(pct*100)+'%"></i></div></button>'}
 function renderEnvViewSplit(){
   const ref=new Date();ref.setDate(1);ref.setMonth(ref.getMonth()+viewP);
   const y=ref.getFullYear(),m=ref.getMonth(),dim=daysInMonth(new Date(y,m,1));
@@ -1321,8 +1319,8 @@ function renderEnvViewSplit(){
     const tot=plain.reduce((s,e)=>s+alloc(e.id,p),0)+billEnvs.reduce((s,e)=>s+alloc(e.id,p),0);
     let h='<div class="colhd"><div class="rng">'+rng+'</div>'+(isCur?'<div class="badge">Today</div>':'')+
       '<div class="tot">'+fmt(tot)+'</div><div class="totlbl">assigned</div></div>';
-    h+='<div class="grp">Spending</div>'+plain.map(e=>splitEnvRow(e,p)).join('');
-    if(billEnvs.length)h+='<div class="grp">Bills due this half</div>'+billEnvs.map(e=>splitEnvRow(e,p,billByEnv[e.id])).join('');
+    h+='<div class="grp">Spending</div>'+plain.map(e=>envRowRaw(e,p)).join('');
+    if(billEnvs.length)h+='<div class="grp">Bills due this half</div>'+billEnvs.map(e=>envRowRaw(e,p)).join('');
     return h};
   const mon=ref.toLocaleDateString('en-US',{month:'short'});
   $('#splitLeft').innerHTML=col(leftP,leftBills,mon+' 1–14',curPid===leftP);
@@ -1347,9 +1345,6 @@ function renderEnvView(){
   const sp2=$('#envSpare');sp2.textContent=fmt(spare);
   sp2.className=spare<0?'neg-t':'';
   $('#fillLbl').textContent=ltf>0?('Fill envelopes — '+fmt(ltf)+' to go'):'Envelopes fully funded ✓';
-  const cu=catchUpAmount();
-  $('#catchUpWrap').style.display=(cu>0&&viewP===0)?'block':'none';
-  $('#catchUpLbl').textContent='Buffer early-month bills — '+fmt(cu);
   const sp=envs().filter(e=>e.kind!=='goal'),gl=envs().filter(e=>e.kind==='goal');
   $('#envList').innerHTML=sp.length?sp.map(e=>envRowHTML(e,p)).join(''):'<div class="empty">Add envelopes for groceries, gas, fun money…</div>';
   $('#envGoalList').innerHTML=gl.length?gl.map(e=>envRowHTML(e,p)).join(''):'<div class="empty">Sinking funds live here — car repairs, Christmas, PCS moves.</div>'}
@@ -2014,25 +2009,45 @@ function shrink(file){return new Promise((res,rej)=>{const img=new Image();const
   r.onerror=rej;r.readAsDataURL(file)})}
 
 /* ================= envelope form ================= */
-let efId=null,efKindV='spend',efRollV=true;
+let efId=null,efKindV='spend',efRollV=true,efBillId=null,efFundFromV='both';
 function efConv(src){const f=payPerMonth();
   if(src==='pay'){const v=parseFloat($('#efDef').value)||0;$('#efDefMo').value=v?(v*f).toFixed(0):''}
   else{const v=parseFloat($('#efDefMo').value)||0;$('#efDef').value=v?(v/f).toFixed(2):''}
   const pay=parseFloat($('#efDef').value)||0;const wk=pay/weeksPerPeriod();
   $('#efWeekHint').textContent=pay?('That\'s about $'+wk.toFixed(0)+'/week to spend inside the period'):''}
 function openEnvForm(id,kind){efId=id||null;const e=id?data.env[id]:null;
-  efKindV=e?.kind||kind||'spend';efRollV=e?(!!e.roll):true;
+  efKindV=e?.kind||kind||'spend';efRollV=e?(!!e.roll):true;efFundFromV=e?.fundFrom||'both';
   $('#envFormTitle').textContent=e?'Edit envelope':'New envelope';
   $('#efName').value=e?.name||'';$('#efTarget').value=e?.target?(e.target/100):'';$('#efTargetDate').value=e?.targetDate||'';
   $('#efDef').value=e?.def?(e.def/100):'';$('#efDefMo').value='';if(e?.def)efConv('pay');else $('#efWeekHint').textContent='';
   $('#efDelete').style.display=e?'block':'none';
-  efSetKind(efKindV);efSetRoll(efRollV);closeSheet('shFund');openSheet('shEnv')}
+  const bill=id?billForEnv(id):null;
+  $('#efBillNote').style.display=bill?'block':'none';
+  $('#efBillNoteAmt').textContent=bill?fmt(bill.amt):'';
+  $('#efPayFields').style.display=bill?'none':'block';
+  if(bill)efBillId=bill.id;
+  efSetKind(efKindV);efSetRoll(efRollV);efSetFundFrom(efFundFromV);closeSheet('shFund');openSheet('shEnv')}
+function efSetFundFrom(v){efFundFromV=v;
+  $('#efFundBoth').classList.toggle('on',v==='both');$('#efFund1').classList.toggle('on',v==='1st');$('#efFund15').classList.toggle('on',v==='15th');
+  const h=$('#efFundHint');
+  h.textContent=v==='both'?'Funds in two equal halves, one from each paycheck (the usual setup).':
+    v==='1st'?'Funds the FULL monthly amount from the 1st\'s paycheck only — nothing from the 15th. Useful for building a buffer on your surplus payday.':
+    'Funds the FULL monthly amount from the 15th\'s paycheck only — nothing from the 1st.';
+  if(v!=='both'){efRollV=true;efSetRoll(true)}
+  $('#efRollWrap').style.display=(v!=='both'||efKindV==='goal')?'none':'block'}
+function editBillFromEnv(){closeSheet('shEnv');openBillForm(efBillId)}
 function efSetKind(k){efKindV=k;document.querySelectorAll('#efKind .c').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
-  $('#efGoalFields').style.display=k==='goal'?'block':'none';$('#efRollWrap').style.display=k==='goal'?'none':'block'}
+  $('#efGoalFields').style.display=k==='goal'?'block':'none';
+  $('#efRollWrap').style.display=(k==='goal'||efFundFromV!=='both')?'none':'block'}
 function efSetRoll(v){efRollV=v;$('#efRoll1').classList.toggle('on',v);$('#efRoll0').classList.toggle('on',!v)}
 function saveEnv(){const name=$('#efName').value.trim();if(!name)return toast('Give it a name');
   const id=efId||uid();const prev=efId?data.env[efId]:null;
-  put('env/'+id,{name,kind:efKindV,roll:efKindV==='goal'?true:efRollV,def:toC($('#efDef').value)||null,
+  const bill=prev?billForEnv(id):null;
+  const defC=toC($('#efDef').value)||0;
+  const monthly=bill?bill.amt:(isSemi()?defC*2:defC);
+  const fundFrom=bill?null:efFundFromV;
+  const roll=efKindV==='goal'?true:(fundFrom&&fundFrom!=='both'?true:efRollV);
+  put('env/'+id,{name,kind:efKindV,roll,def:defC||null,monthly,fundFrom:fundFrom&&fundFrom!=='both'?fundFrom:null,
     startP:prev?.startP??curP(),
     target:efKindV==='goal'?toC($('#efTarget').value):null,targetDate:efKindV==='goal'?($('#efTargetDate').value||null):null});
   closeSheet('shEnv');toast('Envelope saved')}
