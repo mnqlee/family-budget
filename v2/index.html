@@ -311,7 +311,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <div class="kv"><span id="envInc1Lbl">Sep 1 pay period</span><button class="editval" onclick="editIncomeFor(0)"><b id="envInc1"></b> ✎</button></div>
       <div class="kv"><span id="envInc15Lbl">Sep 15 pay period</span><button class="editval" onclick="editIncomeFor(1)"><b id="envInc15"></b> ✎</button></div>
       <div class="kv" style="border-top:1.5px solid var(--line);margin-top:2px;padding-top:10px"><span><b>Monthly total</b></span><b id="envIncTot"></b></div>
-      <div class="kv"><span>Funded into envelopes</span><b id="envAlloc"></b></div>
+      <div class="kv"><span id="envAllocLbl">Funded into envelopes</span><b id="envAlloc"></b></div>
       <div class="kv"><span id="envLeftLbl">Left to fund</span><b id="envLeft"></b></div>
       <div class="kv"><span id="envSpareLbl">Left over this period</span><b id="envSpare"></b></div>
     </div>
@@ -635,16 +635,14 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <button data-k="exp" onclick="setTxKind('exp')">Spend</button>
       <button data-k="inc" onclick="setTxKind('inc')">Income</button>
     </div>
-    <input class="amountin" id="txAmt" inputmode="decimal" placeholder="$0.00" autocomplete="off">
-    <div style="text-align:center;margin:8px 0 14px">
+    <div id="txRows"></div>
+    <button class="btn ghost sm" style="width:100%;margin-bottom:12px" onclick="addTxRow()">＋ Split across another envelope or person</button>
+    <div class="kv" id="txTotalWrap" style="display:none;margin-bottom:10px"><span>Total</span><b id="txTotalDisp"></b></div>
+    <div style="text-align:center;margin:4px 0 14px">
       <button class="btn ghost sm" onclick="scanReceipt()">📷 Scan receipt</button>
     </div>
-    <label class="f" id="txEnvWrap"><span>Envelope</span><div class="chips" id="txEnvChips"></div></label>
     <label class="f"><span>Payee / description</span><input class="in" id="txPayee" list="payeeList" placeholder="Commissary, gas, allowance…"><datalist id="payeeList"></datalist></label>
-    <div class="grid2">
-      <label class="f"><span>Date</span><input class="in" type="date" id="txDate"></label>
-      <label class="f"><span>Who spent it?</span><select class="in" id="txWho"></select></label>
-    </div>
+    <label class="f"><span>Date</span><input class="in" type="date" id="txDate"></label>
     <label class="f"><span>Note (optional)</span><input class="in" id="txNote"></label>
     <button class="btn brass" id="txSave" onclick="saveTx()">Log it</button>
     <div class="muted" id="scanStatus" style="text-align:center;margin-top:8px"></div>
@@ -719,6 +717,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
     <label class="f"><span>Assign for this period</span><input class="in mono" id="fundIn" inputmode="decimal"></label>
     <div class="muted" id="fundHint" style="margin:-6px 0 12px"></div>
     <button class="btn brass" onclick="saveFund()">Update assignment</button>
+    <button class="btn sec" style="margin-top:10px" onclick="addExpenseFromFund()">＋ Add an expense from this envelope</button>
     <button class="btn sec" style="margin-top:10px" onclick="editEnvFromFund()">✎ Edit envelope</button>
     <h3 style="margin-top:18px">Transactions</h3>
     <div id="fundTx"></div>
@@ -1220,7 +1219,7 @@ function envRowCard(e,a,f,av,t,bi){
     main=fmt(av)+'<span class="of"> / '+fmt(e.target||0)+'</span>';
     const gpct=av<0?1:(e.target?Math.min(1,av/e.target):0);
     pct=gpct;cls=av<0?'over':(gpct<=0.25?'part':'');
-    sub=Math.round(gpct*100)+'% of target'+(t?' · '+fmt(t)+' per period':'');
+    sub=Math.round(gpct*100)+'% of target'+(t?' · '+fmt(t)+' per month':'');
   }else{
     main=fmt(av)+'<span class="of"> left</span>';
     cls=av<0?'over':(pct<=0.25?'part':'');
@@ -1392,15 +1391,21 @@ function renderEnvViewMonth(){
   $('#envInc15Lbl').textContent=ps[1]!=null?periodName(ps[1]):'Second half';
   $('#envInc1').textContent=fmt(inc1);$('#envInc15').textContent=fmt(inc15);
   $('#envIncTot').textContent=fmt(inc1+inc15);
-  const allocT=ps.reduce((s,p)=>s+allocTotal(p),0);
+  // Funded / Left to fund / Extra describe ONE 2-week window — the one currently active — not the
+  // whole month combined, since income (and Fill) also work one paycheck at a time.
+  const primary=ps.includes(curP())?curP():(ps[0]??curP());
+  const pname=periodName(primary);
+  $('#envAllocLbl').textContent='Funded — '+pname;
+  const allocT=allocTotal(primary);
   $('#envAlloc').textContent=fmt(allocT);
-  const ltf=ps.reduce((s,p)=>s+leftToFund(p),0);const l=$('#envLeft');
+  const ltf=leftToFund(primary);const l=$('#envLeft');
+  $('#envLeftLbl').textContent='Left to fund — '+pname;
   l.textContent=ltf===0?'$0.00 ✓':fmt(ltf);
   l.className=ltf===0?'pos-t':'amber-t';
-  const spare=(inc1+inc15)-allocT,sl=spareLabel(spare);
-  $('#envSpareLbl').textContent=sl.label;
+  const spare=incomeFor(primary)-allocT,sl=spareLabel(spare);
+  $('#envSpareLbl').textContent=sl.label+' — '+pname;
   const sp2=$('#envSpare');sp2.textContent=sl.valueTxt;sp2.className=sl.cls;
-  $('#fillLbl').textContent=ltf>0?('Fill envelopes — '+fmt(ltf)+' to go'):'Both pay periods fully funded ✓';
+  $('#fillLbl').textContent=ltf>0?('Fill envelopes — '+fmt(ltf)+' to go'):'This pay period fully funded ✓';
   const sp=envs().filter(e=>e.kind!=='goal'),gl=envs().filter(e=>e.kind==='goal');
   $('#envList').innerHTML=sp.length?sp.map(e=>envRowHTMLMonth(e,ps)).join(''):'<div class="empty">Add envelopes for groceries, gas, fun money…</div>';
   $('#envGoalList').innerHTML=gl.length?gl.map(e=>envRowHTMLMonth(e,ps)).join(''):'<div class="empty">Sinking funds live here — car repairs, Christmas, PCS moves.</div>'}
@@ -1989,24 +1994,54 @@ function copyText(t,msg){if(navigator.clipboard&&navigator.clipboard.writeText){
 function copyRules(){copyText($('#rulesBlock').textContent,'Rules copied — paste in Firebase')}
 
 /* ================= transaction sheet ================= */
-let txKind='exp',txEnvSel=null;
-function openTx(){txKind='exp';txEnvSel=null;
-  $('#txAmt').value='';$('#txPayee').value='';$('#txNote').value='';$('#txDate').value=today();$('#scanStatus').textContent='';
-  setTxKind('exp');fillWho('#txWho');fillEnvChips();fillPayees();
-  openSheet('shTx');setTimeout(()=>$('#txAmt').focus(),150)}
+let txKind='exp',txRows=[];
+function openTx(prefEnvId){txKind='exp';txRows=[{amt:'',env:prefEnvId||null,who:cfg.member}];
+  $('#txPayee').value='';$('#txNote').value='';$('#txDate').value=today();$('#scanStatus').textContent='';
+  setTxKind('exp');fillPayees();renderTxRows();
+  openSheet('shTx');setTimeout(()=>{const f=$('#txRows').querySelector('.txrow-amt');if(f)f.focus()},150)}
+function addExpenseFromFund(){closeSheet('shFund');openTx(fundId)}
 function setTxKind(k){txKind=k;document.querySelectorAll('#txSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
-  $('#txEnvWrap').querySelector('span').textContent=k==='inc'?'Envelope (optional — boosts it)':'Envelope'}
-function fillWho(sel){const s=$(sel);s.innerHTML=Object.entries(data.members).map(([id,m])=>
-  '<option value="'+id+'"'+(id===cfg.member?' selected':'')+'>'+esc(m.name)+'</option>').join('')||'<option value="">—</option>'}
-function fillEnvChips(){const p=curP();$('#txEnvChips').innerHTML=envs().map(e=>{const av=avail(e.id,p);
-  return '<button class="c'+(txEnvSel===e.id?' on':'')+'" onclick="txEnvSel=\''+e.id+'\';fillEnvChips()">'+esc(e.name)+' <span class="mono" style="opacity:.7">'+fmt0(av)+'</span></button>'}).join('')||
-  '<span class="muted">No envelopes yet — you can still log it.</span>'}
+  renderTxRows()}
+function addTxRow(){txRows.push({amt:'',env:null,who:cfg.member});renderTxRows()}
+function removeTxRow(i){txRows.splice(i,1);renderTxRows()}
+function renderTxRows(){const p=curP();
+  $('#txRows').innerHTML=txRows.map((r,i)=>{
+    const who=Object.entries(data.members).map(([id,m])=>'<option value="'+id+'"'+(id===r.who?' selected':'')+'>'+esc(m.name)+'</option>').join('')||'<option value="">—</option>';
+    const chips=envs().map(e=>{const av=avail(e.id,p);
+      return '<button type="button" class="c'+(r.env===e.id?' on':'')+'" data-row="'+i+'" data-env="'+e.id+'">'+esc(e.name)+' <span class="mono" style="opacity:.7">'+fmt0(av)+'</span></button>'}).join('')||
+      '<span class="muted">No envelopes yet — you can still log it.</span>';
+    return '<div class="txrow">'+
+      '<div class="row" style="gap:8px;align-items:center;margin-bottom:8px">'+
+        '<input class="in mono'+(i===0?' amountin':'')+' txrow-amt" data-row="'+i+'" inputmode="decimal" placeholder="$0.00" value="'+esc(r.amt||'')+'" style="flex:1">'+
+        '<select class="in txrow-who" data-row="'+i+'" style="width:112px;flex:none">'+who+'</select>'+
+        (txRows.length>1?'<button type="button" class="btn ghost sm" data-remove="'+i+'" style="flex:none">✕</button>':'')+
+      '</div>'+
+      '<div class="chips" id="txEnvWrap" style="'+(txKind==='inc'?'':'')+'">'+chips+'</div>'+
+    '</div>'}).join('');
+  updateTxTotal()}
+function updateTxTotal(){const t=txRows.reduce((s,r)=>s+(toC(r.amt)||0),0);
+  $('#txTotalWrap').style.display=txRows.length>1?'flex':'none';
+  $('#txTotalDisp').textContent=fmt(t)}
+function initTxDelegation(){
+  const wrap=document.getElementById('txRows');if(!wrap)return;
+  wrap.addEventListener('click',e=>{
+    const envBtn=e.target.closest('button[data-env]');
+    if(envBtn){const i=+envBtn.dataset.row;txRows[i].env=(txRows[i].env===envBtn.dataset.env)?null:envBtn.dataset.env;renderTxRows();return}
+    const rmBtn=e.target.closest('button[data-remove]');
+    if(rmBtn){removeTxRow(+rmBtn.dataset.remove);return}});
+  wrap.addEventListener('input',e=>{
+    if(e.target.classList.contains('txrow-amt')){txRows[+e.target.dataset.row].amt=e.target.value;updateTxTotal()}});
+  wrap.addEventListener('change',e=>{
+    if(e.target.classList.contains('txrow-who')){txRows[+e.target.dataset.row].who=e.target.value}})}
 function fillPayees(){const seen=new Set();$('#payeeList').innerHTML=txList().map(t=>t.payee).filter(p=>p&&!seen.has(p)&&seen.add(p)).slice(0,25).map(p=>'<option value="'+esc(p)+'">').join('')}
-function saveTx(){const amt=toC($('#txAmt').value);if(!amt)return toast(T('toast.amt'));
-  if(txKind==='exp'&&!txEnvSel&&envs().length&&!confirm('No envelope selected — log anyway?'))return;
-  put('tx/'+uid(),{kind:txKind,amt:Math.abs(amt),env:txEnvSel||null,payee:$('#txPayee').value.trim(),
-    date:$('#txDate').value||today(),who:$('#txWho').value||cfg.member,note:$('#txNote').value.trim()});
-  closeSheet('shTx');toast(txKind==='inc'?T('toast.income'):T('toast.logged'))}
+function saveTx(){const rows=txRows.filter(r=>toC(r.amt)>0);
+  if(!rows.length)return toast(T('toast.amt'));
+  if(txKind==='exp'){const bare=rows.filter(r=>!r.env);
+    if(bare.length&&envs().length&&!confirm((bare.length>1?bare.length+' splits have':'One split has')+' no envelope selected — log anyway?'))return}
+  const payee=$('#txPayee').value.trim(),date=$('#txDate').value||today(),note=$('#txNote').value.trim();
+  rows.forEach(r=>put('tx/'+uid(),{kind:txKind,amt:Math.abs(toC(r.amt)),env:r.env||null,payee,date,who:r.who||cfg.member,note}));
+  closeSheet('shTx');
+  toast(rows.length>1?(rows.length+' splits logged'):(txKind==='inc'?T('toast.income'):T('toast.logged')))}
 
 /* ---- receipt scan ---- */
 function scanReceipt(){const k=localStorage.getItem('hb4_apikey');
@@ -2025,10 +2060,11 @@ async function handleReceipt(inp){const f=inp.files[0];inp.value='';if(!f)return
     if(!res.ok)throw new Error('API '+res.status);
     const d=await res.json();const txt=(d.content||[]).map(c=>c.text||'').join('');
     const j=JSON.parse(txt.replace(/```json|```/g,'').trim());
-    if(j.total)$('#txAmt').value=(+j.total).toFixed(2);
+    if(j.total)txRows[0].amt=(+j.total).toFixed(2);
     if(j.payee)$('#txPayee').value=j.payee;
     if(j.date&&/^\d{4}-\d{2}-\d{2}$/.test(j.date))$('#txDate').value=j.date;
-    if(j.envelope){const m=envs().find(e=>e.name.toLowerCase()===j.envelope.toLowerCase());if(m){txEnvSel=m.id;fillEnvChips()}}
+    if(j.envelope){const m=envs().find(e=>e.name.toLowerCase()===j.envelope.toLowerCase());if(m)txRows[0].env=m.id}
+    renderTxRows();
     $('#scanStatus').textContent='✓ Check it and hit Log it'}
   catch(e){$('#scanStatus').textContent='Scan failed — '+(String(e).includes('401')?'invalid API key':'try again or enter manually')}}
 function shrink(file){return new Promise((res,rej)=>{const img=new Image();const r=new FileReader();
@@ -2046,7 +2082,7 @@ function efConv(src){const f=payPerMonth();
   const pay=parseFloat($('#efDef').value)||0;const wk=pay/weeksPerPeriod();
   $('#efWeekHint').textContent=pay?('That\'s about $'+wk.toFixed(0)+'/week to spend inside the period'):''}
 function openEnvForm(id,kind){efId=id||null;const e=id?data.env[id]:null;
-  efKindV=e?.kind||kind||'spend';efRollV=e?(!!e.roll):true;efFundFromV=e?.fundFrom||'both';
+  efKindV=e?.kind||kind||'spend';efRollV=e?(!!e.roll):(efKindV==='goal');efFundFromV=e?.fundFrom||'both';
   $('#envFormTitle').textContent=e?'Edit envelope':'New envelope';
   $('#efName').value=e?.name||'';$('#efTarget').value=e?.target?(e.target/100):'';$('#efTargetDate').value=e?.targetDate||'';
   $('#efDef').value=e?.def?(e.def/100):'';$('#efDefMo').value='';if(e?.def)efConv('pay');else $('#efWeekHint').textContent='';
@@ -2250,6 +2286,7 @@ function bootstrap(){
     data.settings.freq='semi';cache()}
   if(!cfg.mode){openSheet('shSettings');renderSettings()}
   else{if(cfg.mode==='cloud')connectCloud();else setDot(true)}
+  initTxDelegation();
   go('home')}
 window.addEventListener('visibilitychange',()=>{if(!document.hidden)renderAll()});
 bootstrap();
