@@ -474,6 +474,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       </div>
       <label class="f"><span>Expected monthly income after retirement (pension, VA, etc.)</span><input class="in mono" id="trIncome" inputmode="decimal" onchange="saveTrans()"></label>
       <label class="f"><span>Runway fund goal</span><select class="in" id="trEnv" onchange="saveTrans()"></select></label>
+      <div id="trDeleteWrap" style="display:none;margin:-8px 0 12px"><button class="btn ghost sm" onclick="deleteTransGoal()">🗑 Delete this goal</button></div>
     </div>
     <div class="card">
       <div class="eyebrow">Runway fund</div>
@@ -674,7 +675,13 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
     </div>
     <div id="efBillNote" style="display:none;background:var(--brassbg);border-radius:12px;padding:12px;margin-bottom:12px">
       <div style="font-weight:700;font-size:.85rem;margin-bottom:3px">🔗 Linked to a bill</div>
-      <div class="muted" style="font-size:.8rem;margin-bottom:8px">This envelope automatically funds the full <b id="efBillNoteAmt"></b> from whichever payday comes before it's due — no manual amount to set here. To change what's owed, edit the bill itself.</div>
+      <div class="muted" style="font-size:.8rem;margin-bottom:10px">Owes <b id="efBillNoteAmt"></b>. Money always carries forward here until paid — that's not editable, it's what makes the bill funding work. To change the amount owed, edit the bill itself.</div>
+      <div style="font-weight:700;font-size:.8rem;margin-bottom:6px">Funds from</div>
+      <div class="chips" style="margin-bottom:4px">
+        <button class="c" id="efBillSame" onclick="efSetBillSplit(false)">Same paycheck as due date</button>
+        <button class="c" id="efBillSplit" onclick="efSetBillSplit(true)">Split with the prior paycheck</button>
+      </div>
+      <div class="muted" style="font-size:.72rem;margin-bottom:10px" id="efBillSplitHint"></div>
       <button class="btn sec sm" onclick="editBillFromEnv()">Edit the bill amount →</button>
     </div>
     <div id="efPayFields">
@@ -1118,10 +1125,18 @@ function monthlyOf(e){return e.monthly!=null?e.monthly:Math.round((e.def||0)*(is
 function periodTarget(e,p){if(!e)return 0;
   const pid=(p==null?curP():p);
   const bill=billForEnv(e.id);
-  if(bill){ // bill envelopes: fund the FULL amount, once, from the one payday that precedes the due date
+  if(bill){ // bill envelopes: either 100% from the period containing the due date (default —
+    // matches same-day allotment deductions), or split 50/50 with the PRECEDING period too
+    // (for larger bills you want to save toward across both surrounding paychecks)
     if(!isSemi())return bill.amt;
-    const dueInFirstHalf=(bill.day<15); // deducted the same payday it's due — not pre-funded a period ahead
-    return (dueInFirstHalf===(pid%2===0))?bill.amt:0}
+    const dueInFirstHalf=(bill.day<15);
+    const isContaining=(dueInFirstHalf===(pid%2===0));
+    if(e.fundFrom==='split'){
+      const isPreceding=(dueInFirstHalf===((pid+1)%2===0));
+      if(isContaining)return bill.amt-Math.floor(bill.amt/2); // containing period absorbs the odd cent
+      if(isPreceding)return Math.floor(bill.amt/2);
+      return 0}
+    return isContaining?bill.amt:0}
   if(!isSemi())return e.def||0;
   const m=monthlyOf(e);
   if(e.fundFrom==='1st')return (pid%2===0)?m:0;
@@ -1775,17 +1790,28 @@ function saveTrans(){
   const date=$('#trDate').value||null, months=+$('#trMonths').value||6,
         income=toC($('#trIncome').value), sel=$('#trEnv').value;
   let v=sel;
-  if(v==='_new'){const id=uid();const need=monthlyNeed();const target=need*months;
-    put('env/'+id,{name:'Transition Runway',kind:'goal',roll:true,startP:curP(),
-      target:target||null,targetDate:date?(date+'-01'):null});
-    v=id;toast(target?('Transition Runway created — '+fmt0(target)+' target'):'Transition Runway created — set your monthly expenses to compute a target')}
+  if(v==='_new'){
+    const name=prompt('Name this goal:','Transition Runway');
+    if(!name){renderTrans();return}
+    const need=monthlyNeed();const suggested=need?(need*months/100):'';
+    const targetStr=prompt('Target amount for "'+name+'" (leave blank to compute from monthly expenses × '+months+' months):',suggested?suggested.toFixed(2):'');
+    if(targetStr===null){renderTrans();return}
+    const target=targetStr.trim()?toC(targetStr):(need*months);
+    const id=uid();
+    put('env/'+id,{name,kind:'goal',roll:true,startP:curP(),target:target||null,targetDate:date?(date+'-01'):null});
+    v=id;toast('"'+name+'" created'+(target?(' — '+fmt0(target)+' target'):''))}
   put('settings/retDate',date);put('settings/trMonths',months);
-  put('settings/retIncome',income);put('settings/transEnv',v||null)}
+  put('settings/retIncome',income);put('settings/transEnv',v||null);renderTrans()}
+function deleteTransGoal(){const id=data.settings.transEnv;if(!id||!data.env[id])return;
+  const name=data.env[id].name;
+  if(!confirm('Delete the "'+name+'" goal envelope? This removes its saved balance and history — it does not just unlink it.'))return;
+  put('env/'+id,null);put('settings/transEnv',null);toast('"'+name+'" deleted');renderTrans()}
 function renderTrans(){const s=data.settings;
   $('#trDate').value=s.retDate||'';$('#trMonths').value=s.trMonths||6;
   $('#trIncome').value=(s.retIncome||0)/100||'';
   $('#trEnv').innerHTML='<option value="">— pick a goal —</option>'+envs().filter(e=>e.kind==='goal').map(e=>'<option value="'+e.id+'"'+(s.transEnv===e.id?' selected':'')+'>'+esc(e.name)+'</option>').join('')+
-    '<option value="_new">＋ Create "Transition Runway" goal for me</option>';
+    '<option value="_new">＋ Create a new goal…</option>';
+  $('#trDeleteWrap').style.display=(s.transEnv&&data.env[s.transEnv])?'block':'none';
   // countdown
   if(s.retDate){const rd=new Date(s.retDate+'-01');const mo=monthsBetween(new Date(),rd);
     $('#transCount').textContent=mo>0?(Math.floor(mo/12)+'y '+(mo%12)+'m'):'You made it 🎉';
@@ -2028,12 +2054,18 @@ function setTxKind(k){txKind=k;document.querySelectorAll('#txSeg button').forEac
   renderTxPicker()}
 function toggleTxEnv(envId){const i=txRows.findIndex(r=>r.env===envId);
   if(i>=0)txRows.splice(i,1);else txRows.push({env:envId,amt:'',who:cfg.member});
-  renderTxPicker();
+  syncTxGrid();renderTxRowsOnly();
   if(i<0)setTimeout(()=>{const f=$('#txRows').querySelector('[data-row="'+(txRows.length-1)+'"].txrow-amt');if(f)f.focus()},50)}
 function renderTxPicker(){const p=curP();
-  $('#txEnvGrid').innerHTML=envs().map(e=>{const av=avail(e.id,p),sel=txRows.some(r=>r.env===e.id);
-    return '<button type="button" class="c'+(sel?' on':'')+'" data-env="'+e.id+'">'+esc(e.name)+' <span class="mono" style="opacity:.7">'+fmt0(av)+'</span></button>'}).join('')||
+  $('#txEnvGrid').innerHTML=envs().map(e=>{const av=avail(e.id,p);
+    return '<button type="button" class="c" data-env="'+e.id+'">'+esc(e.name)+' <span class="mono" style="opacity:.7">'+fmt0(av)+'</span></button>'}).join('')||
     '<span class="muted">No envelopes yet — you can still log it.</span>';
+  syncTxGrid();renderTxRowsOnly()}
+function syncTxGrid(){ // toggles the .on class on EXISTING buttons only — never destroys/rebuilds them,
+  // which is what caused rapid taps to sometimes land on the wrong (newly-recreated) bubble
+  document.querySelectorAll('#txEnvGrid button[data-env]').forEach(b=>{
+    b.classList.toggle('on',txRows.some(r=>r.env===b.dataset.env))})}
+function renderTxRowsOnly(){
   $('#txRows').innerHTML=txRows.map((r,i)=>{
     const e=data.env[r.env];
     const who=Object.entries(data.members).map(([id,m])=>'<option value="'+id+'"'+(id===r.who?' selected':'')+'>'+esc(m.name)+'</option>').join('')||'<option value="">—</option>';
@@ -2098,7 +2130,7 @@ function shrink(file){return new Promise((res,rej)=>{const img=new Image();const
   r.onerror=rej;r.readAsDataURL(file)})}
 
 /* ================= envelope form ================= */
-let efId=null,efKindV='spend',efRollV=true,efBillId=null,efFundFromV='both';
+let efId=null,efKindV='spend',efRollV=true,efBillId=null,efFundFromV='both',efBillSplitV=false;
 function efConv(src){const f=payPerMonth();
   if(src==='pay'){const v=parseFloat($('#efDef').value)||0;$('#efDefMo').value=v?(v*f).toFixed(0):''}
   else{const v=parseFloat($('#efDefMo').value)||0;$('#efDef').value=v?(v/f).toFixed(2):''}
@@ -2115,8 +2147,14 @@ function openEnvForm(id,kind){efId=id||null;const e=id?data.env[id]:null;
   $('#efBillNoteAmt').textContent=bill?fmt(bill.amt):'';
   $('#efPayFields').style.display=bill?'none':'block';
   $('#efRollWrap').style.display=bill?'none':(efKindV==='goal'||efFundFromV!=='both'?'none':'block');
-  if(bill)efBillId=bill.id;
+  if(bill){efBillId=bill.id;efSetBillSplit(e?.fundFrom==='split')}
   efSetKind(efKindV);efSetRoll(efRollV);efSetFundFrom(efFundFromV);closeSheet('shFund');openSheet('shEnv')}
+function efSetBillSplit(v){efBillSplitV=v;
+  $('#efBillSame').classList.toggle('on',!v);$('#efBillSplit').classList.toggle('on',v);
+  const bill=data.bills[efBillId];const day=bill?ordSuf(bill.day):'the due date';
+  $('#efBillSplitHint').textContent=v?
+    ('Half comes from the paycheck right before it\'s due, half from the one landing on '+day+' itself.'):
+    ('The full amount comes from whichever single paycheck lands on '+day+'.')}
 function efSetFundFrom(v){efFundFromV=v;
   $('#efFundBoth').classList.toggle('on',v==='both');$('#efFund1').classList.toggle('on',v==='1st');$('#efFund15').classList.toggle('on',v==='15th');
   const h=$('#efFundHint');
@@ -2147,7 +2185,7 @@ function saveEnv(){const name=$('#efName').value.trim();if(!name)return toast('G
   const bill=prev?billForEnv(id):null;
   const defC=toC($('#efDef').value)||0;
   const monthly=bill?bill.amt:(isSemi()?defC*2:defC);
-  const fundFrom=bill?null:efFundFromV;
+  const fundFrom=bill?(efBillSplitV?'split':null):efFundFromV;
   const roll=(bill||efKindV==='goal')?true:(fundFrom&&fundFrom!=='both'?true:efRollV);
   put('env/'+id,{name,kind:efKindV,roll,def:defC||null,monthly,fundFrom:fundFrom&&fundFrom!=='both'?fundFrom:null,
     startP:prev?.startP??curP(),
