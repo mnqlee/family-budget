@@ -326,14 +326,14 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <div class="eyebrow" style="margin-bottom:2px">Income this month</div>
       <div class="kv"><span id="envInc1Lbl">Sep 1 pay period</span><button class="editval" onclick="editIncomeFor(0)"><b id="envInc1"></b> ✎</button></div>
       <div class="kv"><span id="envInc15Lbl">Sep 15 pay period</span><button class="editval" onclick="editIncomeFor(1)"><b id="envInc15"></b> ✎</button></div>
-      <div class="kv totrow"><span><b>Monthly total</b><span class="s" id="envIncExtra"></span></span><b id="envIncTot"></b></div>
+      <div class="kv totrow"><span><b>Monthly total</b></span><b id="envIncTot"></b></div>
+      <div class="kv" id="envIncExtraRow" style="display:none"><span id="envIncExtra"></span><b id="envIncExtraAmt"></b></div>
     </div>
     <div class="card">
       <div class="eyebrow" id="envStatusLbl" style="margin-bottom:6px">Funding status</div>
       <div class="fundbar"><i id="envFundBar" style="width:0%"></i></div>
       <div class="kv"><span id="envAllocLbl">Funded into envelopes</span><b id="envAlloc"></b></div>
       <div class="kv"><span id="envLeftLbl">Left to fund</span><button class="editval" onclick="editLeftToFund()"><b id="envLeft"></b> ✎</button></div>
-      <div id="envLeftAdjNote" style="display:none;margin:-4px 0 8px;font-size:.72rem;color:var(--ink3)">Manually adjusted · <button class="btn ghost sm" style="padding:2px 8px;font-size:.68rem" onclick="resetLeftToFund()">reset to computed value</button></div>
       <div class="kv"><span id="envSpareLbl">Left over this period</span><b id="envSpare"></b></div>
     </div>
     <button class="btn ghost sm" id="fixRollBtn" style="width:100%;margin-bottom:9px;display:none" onclick="fixRollSettings()">🔧 Fix envelope carry-over settings</button>
@@ -1152,8 +1152,10 @@ function resetLeftToFund(){const{ps}=monthPeriods();const primary=ps.includes(cu
 function baseIncomeFor(p){const s=data.settings;
   if(isSemi()&&(s.income1!=null||s.income15!=null))return (p%2===0?(s.income1??s.income):(s.income15??s.income))||0;
   return s.income||0}
-function extraIncomeFor(p){ // any income transactions logged into this period add to what you can assign
-  let s=0;for(const t of Object.values(data.tx||{}))if(t.kind==='inc'&&pidOf(t.date)===p)s+=t.amt;return s}
+function extraIncomeFor(p){ // only income NOT already dropped into an envelope counts as new money
+  // to assign — income logged straight into an envelope has already raised that envelope's balance
+  let s=0;for(const t of Object.values(data.tx||{}))if(t.kind==='inc'&&pidOf(t.date)===p&&!t.env)s+=t.amt;return s}
+function allIncomeFor(p){let s=0;for(const t of Object.values(data.tx||{}))if(t.kind==='inc'&&pidOf(t.date)===p)s+=t.amt;return s}
 function incomeFor(p){return baseIncomeFor(p)+extraIncomeFor(p)}
 function txList(){return Object.entries(data.tx||{}).map(([id,t])=>({id,...t})).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))}
 function envFlow(envId,p){ // net spent (positive) in period p for envelope
@@ -1240,7 +1242,9 @@ function spareLabel(spare){ // returns {label, valueTxt, cls} — never an ambig
 function envRowHTML(e,p){return envRowRaw(e,p)}
 function envRowHTMLMonth(e,ps){const a=ps.reduce((s,p)=>s+alloc(e.id,p),0),f=ps.reduce((s,p)=>s+envFlow(e.id,p),0);
   const av=(e.roll||e.kind==='goal')?avail(e.id,ps[ps.length-1]):a-f;
-  return envRowCard(e,a,f,av,monthlyOf(e),{p:ps[ps.length-1]})}
+  // paid if it was paid in EITHER half of the month, not just the last one
+  const paidP=ps.find(p=>envPaidIn(e,p));
+  return envRowCard(e,a,f,av,monthlyOf(e),{p:paidP!=null?paidP:ps[ps.length-1]})}
 function envRowRaw(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
   return envRowCard(e,a,f,av,monthlyOf(e),{p})}
 function envRowSplit(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
@@ -1284,7 +1288,7 @@ function renderHomeDrawer(p){const d=$('#hDrawer');
       .sort((x,y)=>(x.a?x.f/x.a:0)<(y.a?y.f/y.a:0)?1:-1);
     h=list.map(x=>drow(esc(x.e.name),
       'funded '+fmt(x.a)+' · spent '+fmt(x.f)+(x.a?' · '+Math.round(x.f/x.a*100)+'%':''),
-      fmt(x.av),(x.a&&x.f/x.a>.7)?'hot':(x.f===0?'zero':''),x.e.id)).join('');
+      fmt(x.av),(x.a&&x.f/x.a>.7)?'hot':'',x.e.id)).join('');
     const tf=list.reduce((s,x)=>s+x.a,0),ts=list.reduce((s,x)=>s+x.f,0);
     h+=drow('<b>Safe to spend</b>','funded '+fmt(tf)+' − spent '+fmt(ts)+' · bills &amp; goals excluded',fmt(safeToSpend(p)),'dtot')}
   else if(hTile===2){title='Left to fund — '+periodName(p);
@@ -1451,7 +1455,20 @@ function openFillPicker(){const{ps}=monthPeriods();
   $('#fillPick2').textContent=l2.txt+(l2.done?' ✓ already funded':' — '+fmt(l2.ltf)+' to go');
   openSheet('shFillPick')}
 function fillPickPeriod(half){const{ps}=monthPeriods();const p=ps[half];if(p==null)return;
-  fillPeriod(p);closeSheet('shFillPick')}
+  fillPeriod(p);closeSheet('shFillPick');
+  setTimeout(()=>offerSweep(p),300)}
+function offerSweep(p){ // once every envelope hits its target, park the remainder in Savings
+  const spare=incomeFor(p)-allocTotal(p);
+  if(leftToFund(p)>0||spare<=0)return;
+  let sav=envs().find(e=>/^savings$/i.test(e.name));
+  const msg='Every envelope for '+periodName(p)+' is funded, leaving '+fmt(spare)+
+    '.\n\nMove it into '+(sav?'your Savings envelope':'a new Savings envelope')+'?';
+  if(!confirm(msg))return;
+  if(!sav){const id=uid();
+    put('env/'+id,{name:'Savings',kind:'goal',roll:true,monthly:0,startP:curP(),target:null,targetDate:null});
+    sav={id}}
+  put('budgets/'+p+'/'+sav.id,(data.budgets?.[p]?.[sav.id]||0)+spare);
+  toast(fmt(spare)+' swept into Savings')}
 function groupedEnvHTML(list,ps){
   const first=list.filter(e=>{const d=envDueDay(e);return d&&d<15}).sort((a,b)=>envDueDay(a)-envDueDay(b));
   const second=list.filter(e=>{const d=envDueDay(e);return d&&d>=15}).sort((a,b)=>envDueDay(a)-envDueDay(b));
@@ -1467,7 +1484,9 @@ function renderEnvViewMonth(){
   $('#envInc1').textContent=fmt(inc1);$('#envInc15').textContent=fmt(inc15);
   const xtra=(ps[0]!=null?extraIncomeFor(ps[0]):0)+(ps[1]!=null?extraIncomeFor(ps[1]):0);
   $('#envIncTot').textContent=fmt(inc1+inc15+xtra);
-  $('#envIncExtra').textContent=xtra?('two paychecks + '+fmt(xtra)+' extra income logged'):'';
+  $('#envIncExtraRow').style.display=xtra?'flex':'none';
+  $('#envIncExtra').textContent='+ additional income';
+  $('#envIncExtraAmt').textContent=fmt(xtra);
   // Funded / Left to fund / Extra describe ONE 2-week window — the one currently active — not the
   // whole month combined, since income (and Fill) also work one paycheck at a time.
   const primary=ps.includes(curP())?curP():(ps[0]??curP());
@@ -1484,7 +1503,6 @@ function renderEnvViewMonth(){
   $('#envLeftLbl').textContent='Left to fund — '+pname;
   l.textContent=ltf===0?'$0.00 ✓':fmt(ltf);
   l.className=ltf===0?'pos-t':'amber-t';
-  $('#envLeftAdjNote').style.display=leftToFundAdj(primary)?'block':'none';
   const spare=incomeFor(primary)-allocT,sl=spareLabel(spare);
   $('#envSpareLbl').textContent=sl.label+' — '+pname;
   const sp2=$('#envSpare');sp2.textContent=sl.valueTxt;sp2.className=sl.cls;
@@ -2064,7 +2082,7 @@ function applyLang(){
   // tx sheet
   const segB=document.querySelectorAll('#txSeg button');if(segB[0]){segB[0].textContent=T('tx.spend');segB[1].textContent=T('tx.income')}
   const lbls=document.querySelectorAll('#shTx label.f > span');
-  if(lbls.length>=3){lbls[0].textContent=T('tx.payee');lbls[1].textContent=T('tx.date');lbls[2].textContent=T('tx.note')}
+  if(lbls.length>=3){lbls[0].textContent=T('tx.payee');lbls[1].textContent=T('tx.note');lbls[2].textContent=T('tx.date')}
   $('#txSave').textContent=T('tx.log');
   const scanBtn=document.querySelector('#shTx .btn.ghost.sm');if(scanBtn)scanBtn.textContent=T('tx.scan');
   // more menu
@@ -2245,7 +2263,7 @@ function openFund(id,forceP){fundId=id;
   $('#fundIn').value=alloc(id,p)?(alloc(id,p)/100):'';
   const wk=weeksPerPeriod(),f=payPerMonth(),a=alloc(id,p);
   $('#fundHint').innerHTML=((a?('≈ <b class="mono">'+fmt0(a/wk)+'</b>/week · <b class="mono">'+fmt0(a*f)+'</b>/month'):'')+
-    (e.def?((a?' · ':'')+'default '+fmt(e.def)+'/paycheck'):''))||'';
+    ((()=>{const pt=periodTarget(e,p);return pt?((a?' · ':'')+'target '+fmt(pt)+'/paycheck'):''})()))||'';
   const bill=billForEnv(id);
   $('#fundBillCard').style.display=bill?'block':'none';
   if(bill){const due=nextDue(bill),paid=isPaid(bill,due);
