@@ -337,6 +337,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <div class="kv"><span id="envSpareLbl">Left over this period</span><b id="envSpare"></b></div>
     </div>
     <button class="btn ghost sm" id="fixRollBtn" style="width:100%;margin-bottom:9px;display:none" onclick="fixRollSettings()">🔧 Fix envelope carry-over settings</button>
+    <button class="btn sec" id="mergeDupBtn" style="width:100%;margin-bottom:9px;display:none" onclick="mergeDupEnvelopes()">🔗 <span id="mergeDupLbl"></span></button>
     <button class="btn brass" style="width:100%;margin-bottom:9px" onclick="openFillPicker()">⚡ <span id="fillLbl">Fill envelopes</span></button>
     <div class="row" style="margin-bottom:12px;gap:8px">
       <button class="btn sec sm" style="flex:1" onclick="copyPrevBudget()">⤺ Copy last period</button>
@@ -1508,6 +1509,9 @@ function renderEnvViewMonth(){
   const sp2=$('#envSpare');sp2.textContent=sl.valueTxt;sp2.className=sl.cls;
   $('#fillLbl').textContent=ltf>0?('Fill envelopes — '+fmt(ltf)+' to go'):'This pay period fully funded ✓';
   $('#fixRollBtn').style.display=hasRollIssues()?'block':'none';
+  const dp=dupPairs();
+  $('#mergeDupBtn').style.display=dp.length?'block':'none';
+  $('#mergeDupLbl').textContent='Combine '+dp.length+' split bill'+(dp.length===1?'':'s')+' into single envelopes';
   const sp=envs().filter(e=>e.kind!=='goal'),gl=envs().filter(e=>e.kind==='goal');
   $('#envList').innerHTML=sp.length?groupedEnvHTML(sp,ps):'<div class="empty">Add envelopes for groceries, gas, fun money…</div>';
   $('#envGoalList').innerHTML=gl.length?gl.map(e=>envRowHTMLMonth(e,ps)).join(''):'<div class="empty">Sinking funds live here — car repairs, Christmas, PCS moves.</div>'}
@@ -2219,6 +2223,46 @@ function efSetFundFrom(v){efFundFromV=v;
     'The FULL monthly total comes from the 15th\'s paycheck only.';
   if(v!=='both'){efRollV=true;efSetRoll(true)}
   $('#efRollWrap').style.display=(v!=='both'||efKindV==='goal')?'none':'block'}
+function dupPairs(){ // envelopes split as "Name — 1st" / "Name — 15th" belong as ONE envelope now
+  const byBase={};
+  for(const e of envs()){
+    const m=e.name.match(/^(.*?)\s*[—-]\s*(1st|15th|3rd|17th|\d+(?:st|nd|rd|th))\s*$/i);
+    if(!m)continue;
+    const base=m[1].trim();(byBase[base]=byBase[base]||[]).push(e)}
+  return Object.entries(byBase).filter(([,arr])=>arr.length>1).map(([base,arr])=>({base,arr}))}
+function mergeDupEnvelopes(){
+  const pairs=dupPairs();
+  if(!pairs.length){toast('No split duplicates found — nothing to merge');return}
+  const lines=pairs.map(p=>{const tot=p.arr.reduce((s,e)=>s+monthlyOf(e),0);
+    return '• '+p.base+' → one envelope at '+fmt(tot)+'/month'}).join('\n');
+  if(!confirm('Combine these split envelopes into one each?\n\n'+lines+
+    '\n\nAll funded money and transaction history moves to the combined envelope. Nothing is lost.'))return;
+  for(const{base,arr}of pairs){
+    // keep the earliest-due one as the survivor so the due day stays right
+    const sorted=[...arr].sort((a,b)=>(envDueDay(a)||99)-(envDueDay(b)||99));
+    const keep=sorted[0],drop=sorted.slice(1);
+    const total=arr.reduce((s,e)=>s+monthlyOf(e),0);
+    // move every budget allocation onto the survivor
+    for(const[pid,row]of Object.entries(data.budgets||{})){
+      let add=0;for(const d of drop){if(row[d.id]!=null){add+=row[d.id];delete row[d.id]}}
+      if(add)row[keep.id]=(row[keep.id]||0)+add}
+    // re-point transactions
+    for(const t of Object.values(data.tx||{})){
+      if(drop.some(d=>d.id===t.env))t.env=keep.id;
+      if(drop.some(d=>d.id===t.from))t.from=keep.id;
+      if(drop.some(d=>d.id===t.to))t.to=keep.id}
+    // merge paid history
+    const paid=Object.assign({},keep.paid||{});
+    for(const d of drop)Object.assign(paid,d.paid||{});
+    setPath(data,'env/'+keep.id,{...data.env[keep.id],name:base,monthly:total,
+      def:isSemi()?Math.floor(total/2):total,roll:true,paid:Object.keys(paid).length?paid:null});
+    for(const d of drop)setPath(data,'env/'+d.id,null)}
+  cache();
+  if(rootRef){rootRef.child('env').set(data.env).catch(()=>{});
+    rootRef.child('budgets').set(data.budgets||{}).catch(()=>{});
+    rootRef.child('tx').set(data.tx||{}).catch(()=>{})}
+  renderAll();
+  toast('Merged — each bill is now a single envelope')}
 function hasRollIssues(){return envs().some(e=>(envDueDay(e)&&!e.roll))}
 function fixRollSettings(){
   const bad=envs().filter(e=>envDueDay(e)&&!e.roll);
