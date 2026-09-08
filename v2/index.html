@@ -153,6 +153,9 @@ input[type=date].in,input[type=month].in{min-height:47px;-webkit-appearance:none
 .drawer .drow.zero{opacity:.55}
 .drawer .drow.dtot{border-top:1.5px solid var(--brass2);border-bottom:0;margin-top:5px;padding-top:8px}
 .drawer .drow.dtot b{color:var(--brass2)}
+.drawer button.drow{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #2C5C49;font-family:inherit;color:inherit;position:relative;padding-right:16px}
+.drawer button.drow:active{background:rgba(255,255,255,.06)}
+.drawer .dchev{position:absolute;right:0;top:50%;transform:translateY(-50%);color:#9FB8A9;font-size:.9rem}
 .editval{background:#F7FAF6;border:1.5px solid var(--green2);border-radius:8px;padding:3px 9px;
   font-family:inherit;font-size:.8rem;font-weight:700;color:var(--green3)}
 .editval b{font-family:'IBM Plex Mono',monospace}
@@ -633,6 +636,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
   <button id="t-home" onclick="go('home')"><span class="ic">🏠</span>Home</button>
   <button id="t-env" onclick="go('env')"><span class="ic">✉️</span>Budget</button>
   <span class="fabwrap"><button class="fab" onclick="openTx()" aria-label="Add transaction">＋</button></span>
+  <button id="t-cal" onclick="go('cal')"><span class="ic">📅</span>Calendar</button>
   <button id="t-more" onclick="go('more')"><span class="ic">☰</span>More</button>
 </nav>
 
@@ -1078,7 +1082,9 @@ function connectCloud(){
     fdb=firebase.database();rootRef=fdb.ref('hb5/'+cfg.code);
     rootRef.on('value',snap=>{
       const v=snap.val();
-      if(v){data=Object.assign(blank(),v);data.settings=Object.assign(blank().settings,v.settings||{});cache();renderAll();}
+      if(v){data=Object.assign(blank(),v);data.settings=Object.assign(blank().settings,v.settings||{});
+        migrateBillsIntoEnvelopes(); // cloud data arrives AFTER boot — migrate here or it never happens
+        cache();renderAll();}
     },err=>{setDot(false);toast('Sync error — check database rules')});
     fdb.ref('.info/connected').on('value',s=>setDot(!!s.val()));
   }catch(e){setDot(false);toast('Could not connect to Firebase')}
@@ -1171,7 +1177,7 @@ function fillPeriod(p,silent){const ups={};for(const e of envs()){const t=period
 /* ================= navigation ================= */
 const VIEWS=['home','env','more','goals','debts','worth','reports','road','kids','give','trans','cal','subs','vault','tank','help'];
 function go(v){VIEWS.forEach(x=>{const el=$('#v-'+x);if(el)el.classList.toggle('on',x===v)});
-  ['home','env','more'].forEach(x=>$('#t-'+x)?.classList.toggle('on',x===v||(!['home','env'].includes(v)&&x==='more')));
+  ['home','env','cal','more'].forEach(x=>$('#t-'+x)?.classList.toggle('on',x===v||(!['home','env','cal'].includes(v)&&x==='more')));
   window.scrollTo(0,0);cfg._view=v;renderAll()}
 function openSheet(id){$('#'+id).classList.add('on');if(id==='shSettings')renderSettings()}
 function closeSheet(id){$('#'+id).classList.remove('on')}
@@ -1254,7 +1260,8 @@ function envRowCard(e,a,f,av,t,bi){
   else if(paid)sub='paid ✓ · funded '+fmt(a)+' · spent '+fmt(f);
   else if(over)sub='OVER by '+fmt(-av)+' · funded '+fmt(a)+' · spent '+fmt(f);
   else sub='funded '+fmt(a)+' of '+fmt(total)+' · spent '+fmt(f)+(dd?' · due the '+ordSuf(dd):'');
-  return '<button class="envr'+(paid?' paid':'')+'" onclick="openFund(\''+e.id+'\')">'+
+  const pArg=(bi&&bi.p!=null)?(','+bi.p):'';
+  return '<button class="envr'+(paid?' paid':'')+'" onclick="openFund(\''+e.id+'\''+pArg+')">'+
     '<span class="r1"><span class="nm">'+(isGoal?'🎯 ':'')+esc(e.name)+(paid?'<span class="paidstamp">PAID ✓</span>':'')+'</span>'+
     '<span class="fr'+(over?' neg-t':'')+'">'+main+'</span></span>'+
     '<span class="r2">'+sub+'</span>'+
@@ -1264,8 +1271,10 @@ let hTile=0;
 function tapTile(n){hTile=(hTile===n)?0:n;renderHome()}
 function tileHTML(n,cls,eb,big,st){return '<button class="tile '+cls+(hTile===n?' sel':'')+'" onclick="tapTile('+n+')">'+
   '<span class="eb">'+eb+'</span><span class="big">'+big+'</span><span class="st">'+st+'</span><span class="chev">tap ›</span></button>'}
-function drow(label,sub,val,cls){return '<div class="drow'+(cls?' '+cls:'')+'"><span>'+label+
-  (sub?'<span class="sm">'+sub+'</span>':'')+'</span><b>'+val+'</b></div>'}
+function drow(label,sub,val,cls,envId){
+  const inner='<span>'+label+(sub?'<span class="sm">'+sub+'</span>':'')+'</span><b>'+val+'</b>';
+  if(envId)return '<button class="drow tapd'+(cls?' '+cls:'')+'" onclick="event.stopPropagation();openFund(\''+envId+'\')">'+inner+'<span class="dchev">›</span></button>';
+  return '<div class="drow'+(cls?' '+cls:'')+'">'+inner+'</div>'}
 function renderHomeDrawer(p){const d=$('#hDrawer');
   if(!hTile){d.style.display='none';return}
   d.style.display='block';const bIds=billEnvIds();let h='',title='';
@@ -1275,7 +1284,7 @@ function renderHomeDrawer(p){const d=$('#hDrawer');
       .sort((x,y)=>(x.a?x.f/x.a:0)<(y.a?y.f/y.a:0)?1:-1);
     h=list.map(x=>drow(esc(x.e.name),
       'funded '+fmt(x.a)+' · spent '+fmt(x.f)+(x.a?' · '+Math.round(x.f/x.a*100)+'%':''),
-      fmt(x.av),(x.a&&x.f/x.a>.7)?'hot':(x.f===0?'zero':''))).join('');
+      fmt(x.av),(x.a&&x.f/x.a>.7)?'hot':(x.f===0?'zero':''),x.e.id)).join('');
     const tf=list.reduce((s,x)=>s+x.a,0),ts=list.reduce((s,x)=>s+x.f,0);
     h+=drow('<b>Safe to spend</b>','funded '+fmt(tf)+' − spent '+fmt(ts)+' · bills &amp; goals excluded',fmt(safeToSpend(p)),'dtot')}
   else if(hTile===2){title='Left to fund — '+periodName(p);
@@ -1283,7 +1292,7 @@ function renderHomeDrawer(p){const d=$('#hDrawer');
       .sort((a,b)=>b.gap-a.gap);
     h=drow(periodName(p)+' deposit','',fmt(incomeFor(p)))+
       drow('Funded into envelopes','',fmt(allocTotal(p)));
-    h+=unf.length?unf.slice(0,8).map(x=>drow(esc(x.e.name),'still needs',fmt(x.gap))).join(''):
+    h+=unf.length?unf.map(x=>drow(esc(x.e.name),'still needs',fmt(x.gap),'',x.e.id)).join(''):
       drow('All envelopes funded','','$0.00 ✓');
     const spare=incomeFor(p)-allocTotal(p),sl=spareLabel(spare);
     h+=drow('<b>'+sl.label+'</b>',spare>0?'consider sending it to Savings':'',sl.valueTxt,'dtot')}
@@ -1298,13 +1307,13 @@ function renderHomeDrawer(p){const d=$('#hDrawer');
   else if(hTile===4){const groc=envs().find(e=>/groceries/i.test(e.name)&&e.kind!=='goal');
     if(groc){title='Groceries';const a=alloc(groc.id,p),f=envFlow(groc.id,p),av=avail(groc.id,p),t=monthlyOf(groc);
       h=drow('Funded this period','',fmt(a))+drow('Spent so far','',fmt(f))+
-        drow('<b>Available</b>',a?Math.round(f/a*100)+'% used':'',fmt(av),'dtot')}
+        drow('<b>Available</b>',a?Math.round(f/a*100)+'% used':'',fmt(av),'dtot',groc.id)}
     else{title='Tightest envelope right now';
       const list=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id)&&alloc(e.id,p)>0)
         .map(e=>({e,a:alloc(e.id,p),f:envFlow(e.id,p),av:avail(e.id,p)}))
-        .sort((x,y)=>(y.f/y.a)-(x.f/x.a)).slice(0,5);
+        .sort((x,y)=>(y.f/y.a)-(x.f/x.a));
       h=list.length?list.map(x=>drow(esc(x.e.name),Math.round(x.f/x.a*100)+'% spent',fmt(x.av),
-        x.f/x.a>.7?'hot':'')).join(''):drow('Nothing funded yet','fill your envelopes first','—')}}
+        x.f/x.a>.7?'hot':'',x.e.id)).join(''):drow('Nothing funded yet','fill your envelopes first','—')}}
   d.innerHTML='<div class="dh"><span class="dt">'+title+'</span><span class="dx">✕ tap tile to close</span></div>'+h}
 function renderPulse(p){
   const ps=pStart(p),pe=pEnd(p),now=new Date(new Date().toDateString());
@@ -1425,12 +1434,15 @@ function monthPeriods(){ // the two (or however many) periods that make up the c
   return{ref,ps:periodsInMonth(ref)}}
 function editIncomeFor(half){ // half: 0 = first-half (the 1st), 1 = second-half (the 15th)
   const{ps}=monthPeriods();const p=ps[half];if(p==null)return;
-  const cur=incomeFor(p)/100;
-  const v=prompt(periodName(p)+' deposit amount:',cur||'');
+  // prompt with the BASE paycheck (not base+extra income) so what you type is what comes back
+  const cur=baseIncomeFor(p)/100;
+  const v=prompt(periodName(p)+' paycheck amount:',cur?cur.toFixed(2):'');
   if(v===null)return;const c=toC(v);
-  if(isSemi())put('settings/'+(p%2===0?'income1':'income15'),c);
+  if(isSemi()){put('settings/'+(p%2===0?'income1':'income15'),c);
+    // keep the legacy single-income field in step so nothing reads a stale value
+    put('settings/income',c)}
   else put('settings/income',c);
-  toast('Deposit updated')}
+  toast('Paycheck updated to '+fmt(c))}
 function openFillPicker(){const{ps}=monthPeriods();
   const label=(i)=>{const p=ps[i];if(p==null)return{txt:i===0?'First half':'Second half',done:true};
     const ltf=leftToFund(p);return{txt:periodName(p),ltf,done:ltf===0}};
@@ -1449,13 +1461,13 @@ function groupedEnvHTML(list,ps){
 function renderEnvViewMonth(){
   const{ref,ps}=monthPeriods();
   $('#envPeriodLbl').textContent=ref.toLocaleDateString('en-US',{month:'long',year:'numeric'})+(viewP===0?' · now':'');
-  const inc1=ps[0]!=null?incomeFor(ps[0]):0, inc15=ps[1]!=null?incomeFor(ps[1]):0;
+  const inc1=ps[0]!=null?baseIncomeFor(ps[0]):0, inc15=ps[1]!=null?baseIncomeFor(ps[1]):0;
   $('#envInc1Lbl').textContent=ps[0]!=null?periodName(ps[0]):'First half';
   $('#envInc15Lbl').textContent=ps[1]!=null?periodName(ps[1]):'Second half';
   $('#envInc1').textContent=fmt(inc1);$('#envInc15').textContent=fmt(inc15);
-  $('#envIncTot').textContent=fmt(inc1+inc15);
   const xtra=(ps[0]!=null?extraIncomeFor(ps[0]):0)+(ps[1]!=null?extraIncomeFor(ps[1]):0);
-  $('#envIncExtra').textContent=xtra?('includes '+fmt(xtra)+' extra income logged'):'';
+  $('#envIncTot').textContent=fmt(inc1+inc15+xtra);
+  $('#envIncExtra').textContent=xtra?('two paychecks + '+fmt(xtra)+' extra income logged'):'';
   // Funded / Left to fund / Extra describe ONE 2-week window — the one currently active — not the
   // whole month combined, since income (and Fill) also work one paycheck at a time.
   const primary=ps.includes(curP())?curP():(ps[0]??curP());
@@ -2218,7 +2230,14 @@ function deleteEnv(){if(!efId)return;if(!confirm('Delete this envelope? Past tra
 
 /* ---- fund sheet ---- */
 let fundId=null,fundP=0;
-function openFund(id){fundId=id;const p=fundP=curP()+(cfg._view==='env'?viewP:0);const e=data.env[id];if(!e)return;
+function openFund(id,forceP){fundId=id;
+  // viewP counts MONTHS in the budget views — never add it to a period id directly.
+  let p;
+  if(forceP!=null)p=forceP;
+  else if(cfg._view==='env'){const{ps}=monthPeriods();p=ps.includes(curP())?curP():(ps[0]??curP())}
+  else p=curP();
+  fundP=p;
+  const e=data.env[id];if(!e)return;
   $('#fundTitle').textContent=(e.kind==='goal'?'🎯 ':'✉️ ')+e.name+' · '+pLabel(p);
   $('#fundAlloc').textContent=fmt(alloc(id,p));
   $('#fundSpent').textContent=fmt(envFlow(id,p));
