@@ -73,6 +73,10 @@ main{max-width:640px;margin:0 auto;padding:16px 14px 24px}
 .row{display:flex;align-items:center;gap:10px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid2>*{min-width:0}
+.grid2.pair{align-items:end}
+.grid2.pair>label.f{display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+.grid2.pair>label.f span{min-height:1.15em}
+.grid2.pair>label.f .in{width:100%}
 .muted{color:var(--ink3);font-size:.82rem}
 .pos-t{color:var(--green2)}.neg-t{color:var(--red)}.amber-t{color:var(--amber)}
 
@@ -685,9 +689,9 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
         <label class="f"><span>Target date</span><input class="in" type="date" id="efTargetDate"></label>
       </div>
     </div>
-    <div class="grid2">
-      <label class="f"><span>Total needed per month</span><input class="in mono" id="efDefMo" inputmode="decimal" oninput="efConv('mo')" placeholder="0.00"></label>
-      <label class="f"><span>≈ each paycheck</span><input class="in mono" id="efDef" inputmode="decimal" oninput="efConv('pay')" placeholder="0.00"></label>
+    <div class="grid2 pair">
+      <label class="f"><span>Monthly total</span><input class="in mono" id="efDefMo" inputmode="decimal" oninput="efHint()" placeholder="0.00"></label>
+      <label class="f"><span>Per paycheck</span><input class="in mono" id="efDef" inputmode="decimal" oninput="efHint()" placeholder="auto"></label>
     </div>
     <div class="muted" id="efWeekHint" style="margin:-6px 0 12px"></div>
     <label class="f"><span>Due day of month (leave blank if it's not a dated bill)</span>
@@ -723,7 +727,8 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <button class="btn sec sm" id="fundBillBtn" style="width:100%;margin-top:8px"></button>
     </div>
     <div class="card" style="margin-bottom:12px">
-      <div class="kv"><span>Assigned this period</span><b id="fundAlloc"></b></div>
+      <div class="kv"><span>Funded this period</span><b id="fundAlloc"></b></div>
+      <div class="kv" id="fundAddRow" style="display:none"><span>Added into it</span><b id="fundAdd"></b></div>
       <div class="kv"><span>Spent this period</span><b id="fundSpent"></b></div>
       <div class="kv"><span>Available now</span><b id="fundAvail"></b></div>
     </div>
@@ -1031,6 +1036,17 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
         <label class="f"><span>Anthropic API key</span><input class="in" id="setKey" type="password" placeholder="sk-ant-…" onchange="localStorage.setItem('hb4_apikey',this.value.trim());toast('API key saved')"></label>
       </div>
       <div class="card">
+        <div class="eyebrow" style="margin-bottom:6px">Saved pay-period plans</div>
+        <p class="muted" style="margin:0 0 12px;font-size:.78rem">Get every envelope exactly where you want it for a pay period, then save that layout here. From then on ⚡ Fill drops those exact amounts in — the 1st and the 15th can be different.</p>
+        <button class="btn sec sm" onclick="saveFillTemplate('1st')">💾 Save current as 1st-period plan</button>
+        <button class="btn sec sm" style="margin-left:8px" onclick="saveFillTemplate('15th')">💾 Save current as 15th-period plan</button>
+        <div class="muted" id="tplStatus" style="margin-top:12px;font-size:.75rem;line-height:1.6"></div>
+        <div class="row" style="margin-top:10px;gap:8px">
+          <button class="btn ghost sm" onclick="clearFillTemplate('1st')">Clear 1st plan</button>
+          <button class="btn ghost sm" onclick="clearFillTemplate('15th')">Clear 15th plan</button>
+        </div>
+      </div>
+      <div class="card">
         <div class="eyebrow" style="margin-bottom:10px">Backup</div>
         <button class="btn sec sm" onclick="exportJSON()">⬇ Export JSON backup</button>
         <button class="btn sec sm" style="margin-left:8px" onclick="document.getElementById('importFile').click()">⬆ Import backup</button>
@@ -1116,14 +1132,18 @@ const envs=()=>Object.entries(data.env||{}).map(([id,e])=>({id,...e})).sort((a,b
 /* FUNDED MODEL: an envelope holds only money explicitly put into it.
    e.def = the per-period TARGET. budgets[p][id] = what's actually FUNDED. */
 function monthlyOf(e){return e.monthly!=null?e.monthly:Math.round((e.def||0)*(isSemi()?2:payPerMonth()))}
+function perPayOf(e){ // an explicit per-paycheck amount the user typed; null means "work it out for me"
+  return (e&&e.perPay!=null&&e.perPay!=='')?e.perPay:null}
 function periodTarget(e,p){if(!e)return 0;
-  // ONE simple model: an envelope has a monthly total. By default half is suggested per pay
-  // period; you can pin it to a single payday instead. No bill-vs-envelope special cases.
+  // TWO independent numbers: a monthly total, and (optionally) an exact per-paycheck amount.
+  // If perPay is set it wins outright — never recalculated from the monthly total.
   const pid=(p==null?curP():p);
   const m=monthlyOf(e);
-  if(!isSemi())return e.def||m;
-  if(e.fundFrom==='1st')return (pid%2===0)?m:0;
-  if(e.fundFrom==='15th')return (pid%2===1)?m:0;
+  const pp=perPayOf(e);
+  if(!isSemi())return pp!=null?pp:(e.def||m);
+  if(e.fundFrom==='1st')return (pid%2===0)?(pp!=null?pp:m):0;
+  if(e.fundFrom==='15th')return (pid%2===1)?(pp!=null?pp:m):0;
+  if(pp!=null)return pp;
   const half=Math.floor(m/2);
   return (pid%2===0)?half:(m-half)}
 function envDueDay(e){return e&&e.dueDay?e.dueDay:null}
@@ -1159,12 +1179,18 @@ function extraIncomeFor(p){ // only income NOT already dropped into an envelope 
 function allIncomeFor(p){let s=0;for(const t of Object.values(data.tx||{}))if(t.kind==='inc'&&pidOf(t.date)===p)s+=t.amt;return s}
 function incomeFor(p){return baseIncomeFor(p)+extraIncomeFor(p)}
 function txList(){return Object.entries(data.tx||{}).map(([id,t])=>({id,...t})).sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))}
-function envFlow(envId,p){ // net spent (positive) in period p for envelope
+function envSpend(envId,p){ // money that LEFT the envelope in period p — expenses and transfers out
   let s=0;for(const t of Object.values(data.tx||{})){if(pidOf(t.date)!==p)continue;
     if(t.kind==='exp'&&t.env===envId)s+=t.amt;
-    if(t.kind==='inc'&&t.env===envId)s-=t.amt;
-    if(t.kind==='mv'){if(t.from===envId)s+=t.amt;if(t.to===envId)s-=t.amt}}
+    if(t.kind==='mv'&&t.from===envId)s+=t.amt}
   return s}
+function envAdd(envId,p){ // money ADDED to the envelope beyond its assignment — income logged into it, transfers in
+  let s=0;for(const t of Object.values(data.tx||{})){if(pidOf(t.date)!==p)continue;
+    if(t.kind==='inc'&&t.env===envId)s+=t.amt;
+    if(t.kind==='mv'&&t.to===envId)s+=t.amt}
+  return s}
+function envFunded(envId,p){return alloc(envId,p)+envAdd(envId,p)}
+function envFlow(envId,p){return envSpend(envId,p)-envAdd(envId,p)} // net, kept for existing math
 function avail(envId,p){const e=data.env[envId];if(!e)return 0;
   if(e.roll||e.kind==='goal'){let s=0;for(let q=minPid();q<=p;q++)s+=alloc(envId,q)-envFlow(envId,q);return s}
   return alloc(envId,p)-envFlow(envId,p)}
@@ -1174,9 +1200,35 @@ function billEnvIds(){return new Set(envs().filter(e=>envDueDay(e)).map(e=>e.id)
 function safeToSpend(p){const bIds=billEnvIds();let s=0;for(const e of envs())if(e.kind!=='goal'&&!bIds.has(e.id))s+=Math.max(0,avail(e.id,p));return s}
 function inEnvelopes(p){let s=0;for(const e of envs())s+=avail(e.id,p);return s}
 /* --- funding actions --- */
-function fillPeriod(p,silent){const ups={};for(const e of envs()){const t=periodTarget(e,p);if(t>0)ups[e.id]=t}
+function tplKeyFor(p){return (p%2===0)?'tpl1':'tpl15'} // even pid = the 1st's paycheck
+function tplFor(p){const t=data.settings?.[tplKeyFor(p)];return (t&&Object.keys(t).length)?t:null}
+function fillPeriod(p,silent){const tpl=tplFor(p);const ups={};
+  for(const e of envs()){
+    const t=(tpl&&tpl[e.id]!=null)?tpl[e.id]:periodTarget(e,p);
+    if(t>0)ups[e.id]=t}
   put('budgets/'+p,{...(data.budgets?.[p]||{}),...ups});
-  if(!silent)toast('Envelopes filled to this period\'s targets')}
+  if(!silent)toast(tpl?('Filled from your saved '+(p%2===0?'1st':'15th')+'-period plan'):'Envelopes filled to this period\'s targets')}
+function periodOfHalf(which){ // '1st' or '15th' — the matching period in the CURRENT month
+  const c=curP();const wantEven=(which==='1st');
+  if((c%2===0)===wantEven)return c;
+  return (c%2===0)?c+1:c-1}
+function saveFillTemplate(which){
+  const p=periodOfHalf(which);
+  const tpl={};let n=0;
+  for(const e of envs()){const v=alloc(e.id,p);if(v>0){tpl[e.id]=v;n++}}
+  if(!n)return toast('Nothing is assigned in the '+which+' pay period yet — fund your envelopes first, then save.');
+  put('settings/'+(which==='1st'?'tpl1':'tpl15'),tpl);
+  toast('Saved '+n+' envelopes as your '+which+'-period plan')}
+function clearFillTemplate(which){
+  const key=which==='1st'?'tpl1':'tpl15';
+  if(!data.settings?.[key])return toast('No '+which+'-period plan saved');
+  if(!confirm('Clear your saved '+which+'-period plan? Fill will go back to using each envelope\'s target.'))return;
+  put('settings/'+key,null);toast('Cleared')}
+function tplSummary(which){
+  const key=which==='1st'?'tpl1':'tpl15',t=data.settings?.[key];
+  if(!t||!Object.keys(t).length)return which+': no plan saved — Fill uses each envelope\'s target.';
+  let sum=0,n=0;for(const[id,v]of Object.entries(t))if(data.env?.[id]){sum+=v;n++}
+  return which+': '+n+' envelopes, '+fmt(sum)+' per pay period.'}
 /* ================= navigation ================= */
 const VIEWS=['home','env','more','goals','debts','worth','reports','road','kids','give','trans','cal','subs','vault','tank','help'];
 function go(v){VIEWS.forEach(x=>{const el=$('#v-'+x);if(el)el.classList.toggle('on',x===v)});
@@ -1241,28 +1293,30 @@ function spareLabel(spare){ // returns {label, valueTxt, cls} — never an ambig
   if(spare===0)return{label:'Exactly funded',valueTxt:'$0.00 ✓',cls:'pos-t'};
   return{label:'Extra, unassigned',valueTxt:fmt(spare),cls:'amber-t'}}
 function envRowHTML(e,p){return envRowRaw(e,p)}
-function envRowHTMLMonth(e,ps){const a=ps.reduce((s,p)=>s+alloc(e.id,p),0),f=ps.reduce((s,p)=>s+envFlow(e.id,p),0);
+// a = funded (assignment + anything added into it), f = spent. Never a net figure.
+function envRowHTMLMonth(e,ps){const a=ps.reduce((s,p)=>s+envFunded(e.id,p),0),f=ps.reduce((s,p)=>s+envSpend(e.id,p),0);
   const av=(e.roll||e.kind==='goal')?avail(e.id,ps[ps.length-1]):a-f;
   // paid if it was paid in EITHER half of the month, not just the last one
   const paidP=ps.find(p=>envPaidIn(e,p));
   return envRowCard(e,a,f,av,monthlyOf(e),{p:paidP!=null?paidP:ps[ps.length-1]})}
-function envRowRaw(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
-  return envRowCard(e,a,f,av,monthlyOf(e),{p})}
-function envRowSplit(e,p){const a=alloc(e.id,p),f=envFlow(e.id,p),av=avail(e.id,p);
-  return envRowCard(e,a,f,av,periodTarget(e,p),{p})}
+function envRowRaw(e,p){return envRowCard(e,envFunded(e.id,p),envSpend(e.id,p),avail(e.id,p),monthlyOf(e),{p})}
+function envRowSplit(e,p){return envRowCard(e,envFunded(e.id,p),envSpend(e.id,p),avail(e.id,p),periodTarget(e,p),{p})}
 
 function envRowCard(e,a,f,av,t,bi){
   const isGoal=e.kind==='goal';
-  const total=isGoal?(e.target||0):t;           // 100% mark = what this envelope needs
-  const over=av<0;
-  const pct=over?100:(total?Math.min(100,Math.max(0,av/total*100)):0);
-  const cls=over?'over':(total&&av/total<=0.25?'part':'');
   const dd=envDueDay(e);
   const paid=dd?envPaidIn(e,bi&&bi.p!=null?bi.p:curP()):false;
-  let main=fmt(av)+'<span class="of"> / '+fmt(total)+'</span>';
+  // A paid bill reads against the WHOLE bill, not this period's slice — 0 / $1,021.00
+  const total=isGoal?(e.target||0):(paid?monthlyOf(e):t);
+  // A PAID bill is settled and done: empty envelope, empty bar, no red, no negative.
+  const shownAv=paid?0:av;
+  const over=!paid&&av<0;
+  const pct=paid?0:(over?100:(total?Math.min(100,Math.max(0,av/total*100)):0));
+  const cls=paid?'':(over?'over':(total&&av/total<=0.25?'part':''));
+  let main=fmt(shownAv)+'<span class="of"> / '+fmt(total)+'</span>';
   let sub;
   if(isGoal)sub=Math.round(total?av/total*100:0)+'% of target'+(t?' · '+fmt(t)+' per month':'');
-  else if(paid)sub='paid ✓ · funded '+fmt(a)+' · spent '+fmt(f);
+  else if(paid)sub='paid ✓'+(dd?' · due the '+ordSuf(dd):'');
   else if(over)sub='OVER by '+fmt(-av)+' · funded '+fmt(a)+' · spent '+fmt(f);
   else sub='funded '+fmt(a)+' of '+fmt(total)+' · spent '+fmt(f)+(dd?' · due the '+ordSuf(dd):'');
   const pArg=(bi&&bi.p!=null)?(','+bi.p):'';
@@ -1285,7 +1339,7 @@ function renderHomeDrawer(p){const d=$('#hDrawer');
   d.style.display='block';const bIds=billEnvIds();let h='',title='';
   if(hTile===1){title='Safe to spend — every discretionary envelope';
     const list=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id))
-      .map(e=>({e,a:alloc(e.id,p),f:envFlow(e.id,p),av:avail(e.id,p)}))
+      .map(e=>({e,a:envFunded(e.id,p),f:envSpend(e.id,p),av:avail(e.id,p)}))
       .sort((x,y)=>(x.a?x.f/x.a:0)<(y.a?y.f/y.a:0)?1:-1);
     h=list.map(x=>drow(esc(x.e.name),
       'funded '+fmt(x.a)+' · spent '+fmt(x.f)+(x.a?' · '+Math.round(x.f/x.a*100)+'%':''),
@@ -1310,12 +1364,12 @@ function renderHomeDrawer(p){const d=$('#hDrawer');
       drow('Goals &amp; sinking funds','long game',fmt(goalm))+
       drow('<b>Total across all envelopes</b>','should match your bank balance',fmt(spend+billm+goalm),'dtot')}
   else if(hTile===4){const groc=envs().find(e=>/groceries/i.test(e.name)&&e.kind!=='goal');
-    if(groc){title='Groceries';const a=alloc(groc.id,p),f=envFlow(groc.id,p),av=avail(groc.id,p),t=monthlyOf(groc);
+    if(groc){title='Groceries';const a=envFunded(groc.id,p),f=envSpend(groc.id,p),av=avail(groc.id,p),t=monthlyOf(groc);
       h=drow('Funded this period','',fmt(a))+drow('Spent so far','',fmt(f))+
         drow('<b>Available</b>',a?Math.round(f/a*100)+'% used':'',fmt(av),'dtot',groc.id)}
     else{title='Tightest envelope right now';
       const list=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id)&&alloc(e.id,p)>0)
-        .map(e=>({e,a:alloc(e.id,p),f:envFlow(e.id,p),av:avail(e.id,p)}))
+        .map(e=>({e,a:envFunded(e.id,p),f:envSpend(e.id,p),av:avail(e.id,p)}))
         .sort((x,y)=>(y.f/y.a)-(x.f/x.a));
       h=list.length?list.map(x=>drow(esc(x.e.name),Math.round(x.f/x.a*100)+'% spent',fmt(x.av),
         x.f/x.a>.7?'hot':'',x.e.id)).join(''):drow('Nothing funded yet','fill your envelopes first','—')}}
@@ -1327,8 +1381,8 @@ function renderPulse(p){
   const timePct=Math.round(elapsed/totalD*100);
   const bIds=billEnvIds();
   const disc=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id));
-  const funded=disc.reduce((s,e)=>s+alloc(e.id,p),0);
-  const spent=disc.reduce((s,e)=>s+envFlow(e.id,p),0);
+  const funded=disc.reduce((s,e)=>s+envFunded(e.id,p),0);
+  const spent=disc.reduce((s,e)=>s+envSpend(e.id,p),0);
   const spendPct=funded?Math.round(spent/funded*100):0;
   const overs=envs().filter(e=>avail(e.id,p)<0);
   const goals=envs().filter(e=>e.kind==='goal');
@@ -1358,12 +1412,12 @@ function renderHome(){const p=curP();
   const sts=safeToSpend(p),ltf=leftToFund(p),ine=inEnvelopes(p),bIds=billEnvIds();
   const groc=envs().find(e=>/groceries/i.test(e.name)&&e.kind!=='goal');
   const tight=envs().filter(e=>e.kind!=='goal'&&!bIds.has(e.id)&&alloc(e.id,p)>0)
-    .map(e=>({e,a:alloc(e.id,p),f:envFlow(e.id,p),av:avail(e.id,p)}))
+    .map(e=>({e,a:envFunded(e.id,p),f:envSpend(e.id,p),av:avail(e.id,p)}))
     .sort((x,y)=>(y.f/y.a)-(x.f/x.a))[0];
   let t=tileHTML(1,'ok',T('g.safe'),fmt0(sts),sts>0?'▲ '+T('g.onplan'):'nothing funded yet');
   t+=tileHTML(2,ltf>0?'warn':'ok','Left to fund',ltf>0?fmt0(ltf):'$0',ltf>0?'this pay period':'✓ fully funded');
   t+=tileHTML(3,'blue','In envelopes',fmt0(ine),'across '+envs().length+' envelopes');
-  if(groc){const a=alloc(groc.id,p),f=envFlow(groc.id,p),av=avail(groc.id,p);
+  if(groc){const a=envFunded(groc.id,p),f=envSpend(groc.id,p),av=avail(groc.id,p);
     t+=tileHTML(4,(a&&f/a>.7)?'warn':'ok',esc(groc.name)+' left',fmt0(av),
       a?(Math.round(f/a*100)+'% used · '+daysToPay+' days to payday'):'not yet funded')}
   else t+=tight?tileHTML(4,(tight.f/tight.a>.7)?'warn':'ok',esc(tight.e.name)+' left',fmt0(tight.av),
@@ -1652,7 +1706,7 @@ function renderReports(){const now=new Date();const months=[];
   const elapsed=Math.min(totalDays,Math.max(0,Math.round((new Date(new Date().toDateString())-ps)/864e5)+1));
   const timePct=elapsed/totalDays;const bIds=billEnvIds();
   const paceFlags=(timePct<0.15)?[]:envs().filter(e=>e.kind==='spend'&&!e.roll&&!bIds.has(e.id)).map(e=>{
-    const a=alloc(e.id,p),f=envFlow(e.id,p);if(!a)return null;const spendPct=f/a;
+    const a=envFunded(e.id,p),f=envSpend(e.id,p);if(!a)return null;const spendPct=f/a;
     return{name:e.name,spendPct,lead:spendPct-timePct}}).filter(x=>x&&x.lead>0.25).sort((a,b)=>b.lead-a.lead);
   $('#repPaceCard').style.display=paceFlags.length?'':'none';
   $('#repPace').innerHTML=paceFlags.map(x=>
@@ -2199,11 +2253,23 @@ function shrink(file){return new Promise((res,rej)=>{const img=new Image();const
 
 /* ================= envelope form ================= */
 let efId=null,efKindV='spend',efRollV=true,efBillId=null,efFundFromV='both',efBillSplitV=false;
-function efConv(src){const f=payPerMonth();
-  if(src==='pay'){const v=parseFloat($('#efDef').value)||0;$('#efDefMo').value=v?(v*f).toFixed(0):''}
-  else{const v=parseFloat($('#efDefMo').value)||0;$('#efDef').value=v?(v/f).toFixed(2):''}
-  const pay=parseFloat($('#efDef').value)||0;const wk=pay/weeksPerPeriod();
-  $('#efWeekHint').textContent=pay?('That\'s about $'+wk.toFixed(0)+'/week to spend inside the period'):''}
+function efHint(){ // NEVER writes either box. The two amounts are independent and both are kept as typed.
+  const mo=parseFloat($('#efDefMo').value)||0;
+  const pp=parseFloat($('#efDef').value)||0;
+  const ff=efFundFromV;
+  const auto=isSemi()?(ff==='both'?mo/2:mo):(mo/payPerMonth());
+  const per=pp||auto;
+  const d=n=>'$'+n.toFixed(2);
+  let msg='';
+  if(per>0)msg='About $'+(per/weeksPerPeriod()).toFixed(0)+'/week inside the period. ';
+  if(mo>0&&!pp)msg+='Per paycheck is blank, so each payday gets '+d(auto)+' automatically.';
+  else if(pp>0){
+    msg+='Each payday gets exactly '+d(pp)+' — typed by you, not calculated.';
+    if(ff==='both'&&mo>0&&Math.abs(pp*2-mo)>0.004)msg+=' (Two paydays at '+d(pp)+' = '+d(pp*2)+', not '+d(mo)+'.)';
+    if(ff!=='both'&&mo>0&&Math.abs(pp-mo)>0.004)msg+=' (Only one payday funds this, so the month gets '+d(pp)+', not '+d(mo)+'.)';
+  }
+  $('#efWeekHint').textContent=msg}
+function efConv(){efHint()} // legacy name, kept so nothing else breaks
 function openEnvForm(id,kind){efId=id||null;const e=id?data.env[id]:null;
   efKindV=e?.kind||kind||'spend';efFundFromV=e?.fundFrom||'both';
   efRollV=e?(!!e.roll):(efKindV==='goal'||!!(e&&envDueDay(e)));
@@ -2211,17 +2277,19 @@ function openEnvForm(id,kind){efId=id||null;const e=id?data.env[id]:null;
   $('#efName').value=e?.name||'';$('#efTarget').value=e?.target?(e.target/100):'';$('#efTargetDate').value=e?.targetDate||'';
   const mo=e?monthlyOf(e):0;
   $('#efDefMo').value=mo?(mo/100).toFixed(2):'';
-  if(mo)efConv('mo');else{$('#efDef').value='';$('#efWeekHint').textContent=''}
+  $('#efDef').value=(e&&e.perPay!=null)?(e.perPay/100).toFixed(2):'';
   $('#efDueDay').value=e&&envDueDay(e)?envDueDay(e):'';
   $('#efDelete').style.display=e?'block':'none';
-  efSetKind(efKindV);efSetRoll(efRollV);efSetFundFrom(efFundFromV);closeSheet('shFund');openSheet('shEnv')}
+  efSetKind(efKindV);efSetRoll(efRollV);efSetFundFrom(efFundFromV);efHint();closeSheet('shFund');openSheet('shEnv')}
 function efSetFundFrom(v){efFundFromV=v;
   $('#efFundBoth').classList.toggle('on',v==='both');$('#efFund1').classList.toggle('on',v==='1st');$('#efFund15').classList.toggle('on',v==='15th');
   const h=$('#efFundHint');
-  h.textContent=v==='both'?'Half the monthly total from each paycheck.':
-    v==='1st'?'The FULL monthly total comes from the 1st\'s paycheck only.':
-    'The FULL monthly total comes from the 15th\'s paycheck only.';
+  const hasPP=!!(parseFloat($('#efDef').value)||0);
+  h.textContent=v==='both'?(hasPP?'Your per-paycheck amount goes in on BOTH paydays.':'Half the monthly total from each paycheck.'):
+    v==='1st'?(hasPP?'Your per-paycheck amount goes in on the 1st only.':'The FULL monthly total comes from the 1st\'s paycheck only.'):
+    (hasPP?'Your per-paycheck amount goes in on the 15th only.':'The FULL monthly total comes from the 15th\'s paycheck only.');
   if(v!=='both'){efRollV=true;efSetRoll(true)}
+  if($('#efWeekHint'))efHint();
   $('#efRollWrap').style.display=(v!=='both'||efKindV==='goal')?'none':'block'}
 function dupPairs(){ // envelopes split as "Name — 1st" / "Name — 15th" belong as ONE envelope now
   const byBase={};
@@ -2254,7 +2322,7 @@ function mergeDupEnvelopes(){
     // merge paid history
     const paid=Object.assign({},keep.paid||{});
     for(const d of drop)Object.assign(paid,d.paid||{});
-    setPath(data,'env/'+keep.id,{...data.env[keep.id],name:base,monthly:total,
+    setPath(data,'env/'+keep.id,{...data.env[keep.id],name:base,monthly:total,perPay:null,
       def:isSemi()?Math.floor(total/2):total,roll:true,paid:Object.keys(paid).length?paid:null});
     for(const d of drop)setPath(data,'env/'+d.id,null)}
   cache();
@@ -2277,12 +2345,14 @@ function efSetRoll(v){efRollV=v;$('#efRoll1').classList.toggle('on',v);$('#efRol
 function saveEnv(){const name=$('#efName').value.trim();if(!name)return toast('Give it a name');
   const id=efId||uid();const prev=efId?data.env[efId]:null;
   const monthly=toC($('#efDefMo').value)||0;
+  const ppRaw=$('#efDef').value.trim();
+  const perPay=ppRaw?(toC(ppRaw)||null):null;   // explicit per-paycheck amount; null = split automatically
   const dd=parseInt($('#efDueDay').value);
   const dueDay=(dd>=1&&dd<=31)?dd:null;
   const fundFrom=efFundFromV;
   // dated envelopes must roll, or the money can never accumulate to cover the bill
   const roll=(efKindV==='goal'||dueDay)?true:(fundFrom!=='both'?true:efRollV);
-  put('env/'+id,{name,kind:efKindV,roll,monthly,def:isSemi()?Math.floor(monthly/2):monthly,
+  put('env/'+id,{name,kind:efKindV,roll,monthly,perPay,def:isSemi()?Math.floor(monthly/2):monthly,
     dueDay,fundFrom:fundFrom!=='both'?fundFrom:null,
     startP:prev?.startP??curP(),paid:prev?.paid||null,sub:prev?.sub||null,
     target:efKindV==='goal'?toC($('#efTarget').value):null,targetDate:efKindV==='goal'?($('#efTargetDate').value||null):null});
@@ -2301,8 +2371,11 @@ function openFund(id,forceP){fundId=id;
   fundP=p;
   const e=data.env[id];if(!e)return;
   $('#fundTitle').textContent=(e.kind==='goal'?'🎯 ':'✉️ ')+e.name+' · '+pLabel(p);
-  $('#fundAlloc').textContent=fmt(alloc(id,p));
-  $('#fundSpent').textContent=fmt(envFlow(id,p));
+  const addIn=envAdd(id,p);
+  $('#fundAlloc').textContent=fmt(envFunded(id,p));
+  $('#fundAddRow').style.display=addIn?'flex':'none';
+  $('#fundAdd').textContent='+'+fmt(addIn)+(alloc(id,p)?(' (assigned '+fmt(alloc(id,p))+')'):'');
+  $('#fundSpent').textContent=fmt(envSpend(id,p));
   const av=avail(id,p);const fa=$('#fundAvail');fa.textContent=fmt(av);fa.className=av<0?'neg-t':'pos-t';
   $('#fundIn').value=alloc(id,p)?(alloc(id,p)/100):'';
   const wk=weeksPerPeriod(),f=payPerMonth(),a=alloc(id,p);
@@ -2382,6 +2455,7 @@ function renderSettings(){const setup=!cfg.mode;
   $('#setFreq').value=data.settings.freq||'semi';
   $('#setAnchorWrap').style.display=isSemi()?'none':'block';
   $('#setKey').value=localStorage.getItem('hb4_apikey')||'';
+  $('#tplStatus').innerHTML=tplSummary('1st')+'<br>'+tplSummary('15th');
   $('#setMembers').innerHTML=Object.entries(data.members).map(([id,m],i)=>
     '<div class="kv"><span>'+whoBadge(id)+' '+esc(m.name)+(id===cfg.member?' (you)':'')+'</span>'+
     '<span style="display:flex;gap:6px;align-items:center">'+
