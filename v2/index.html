@@ -73,6 +73,7 @@ main{max-width:640px;margin:0 auto;padding:16px 14px 24px}
 .row{display:flex;align-items:center;gap:10px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid2>*{min-width:0}
+.rollnote{display:block;font-size:.68rem;color:var(--ink3);margin-top:5px}
 .grid2.pair{align-items:end}
 .grid2.pair>label.f{display:flex;flex-direction:column;justify-content:flex-end;height:100%}
 .grid2.pair>label.f span{min-height:1.15em}
@@ -339,8 +340,10 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <div class="kv"><span id="envAllocLbl">Funded into envelopes</span><b id="envAlloc"></b></div>
       <div class="kv"><span id="envLeftLbl">Left to fund</span><button class="editval" onclick="editLeftToFund()"><b id="envLeft"></b> ✎</button></div>
       <div class="kv"><span id="envSpareLbl">Left over this period</span><b id="envSpare"></b></div>
+      <div class="muted" style="font-size:.7rem;margin-top:8px;line-height:1.5"><b>Left to fund</b> is what your envelopes are short of their targets. <b>Extra, unassigned</b> is how much of this paycheck hasn't been given a job yet. They only match when every dollar is going exactly where the targets say.</div>
     </div>
     <button class="btn ghost sm" id="fixRollBtn" style="width:100%;margin-bottom:9px;display:none" onclick="fixRollSettings()">🔧 Fix envelope carry-over settings</button>
+    <button class="btn sec sm" id="sweepBtn" style="width:100%;margin-bottom:9px;display:none" onclick="openSweep()">🧹 <span id="sweepLbl"></span></button>
     <button class="btn sec" id="mergeDupBtn" style="width:100%;margin-bottom:9px;display:none" onclick="mergeDupEnvelopes()">🔗 <span id="mergeDupLbl"></span></button>
     <button class="btn brass" style="width:100%;margin-bottom:9px" onclick="openFillPicker()">⚡ <span id="fillLbl">Fill envelopes</span></button>
     <div class="row" style="margin-bottom:12px;gap:8px">
@@ -420,12 +423,22 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
 
   <!-- ============ REPORTS ============ -->
   <section class="view" id="v-reports">
-    <div class="card"><h2>📊 Income vs spending — 6 months</h2><canvas id="repFlow" height="170"></canvas></div>
+    <button class="btn sec sm" style="width:100%;margin-bottom:12px" onclick="openRepPick()">⚙️ Choose which reports show</button>
+    <div class="card" data-rep="flow"><h2>📊 Income vs spending — 6 months</h2>
+      <p class="muted" style="margin:-4px 0 8px">Every income and expense you logged, totalled by calendar month.</p>
+      <div class="row" style="gap:16px;margin-bottom:8px">
+        <span class="muted" style="display:inline-flex;align-items:center;gap:6px"><i style="width:11px;height:11px;border-radius:3px;background:#2C5C49;display:inline-block"></i>Money in</span>
+        <span class="muted" style="display:inline-flex;align-items:center;gap:6px"><i style="width:11px;height:11px;border-radius:3px;background:#B3402F;display:inline-block"></i>Money out</span>
+      </div>
+      <canvas id="repFlow" height="170"></canvas>
+      <div class="muted" id="repFlowNow" style="margin-top:8px"></div></div>
     <div class="seg"><button id="repWin30" onclick="setRepWindow('30')">Last 30 Days</button><button id="repWinMonth" onclick="setRepWindow('month')">This Month</button></div>
-    <div class="card"><h2>Where we're spending most</h2><div id="repEnv"></div></div>
-    <div class="card" id="repTrendCard" style="display:none"><h2>⚠️ Trending high</h2><p class="muted" style="margin:-4px 0 10px">Categories running above their normal 3-month average.</p><div id="repTrend"></div></div>
-    <div class="card" id="repPaceCard" style="display:none"><h2>⏱️ Pace check — this pay period</h2><p class="muted" style="margin:-4px 0 10px">Spending faster than the period's days are passing.</p><div id="repPace"></div></div>
-    <div class="card"><h2>Who spent it</h2><div id="repWho"></div></div>
+    <div class="card" data-rep="env"><h2>Where we're spending most</h2><div id="repEnv"></div></div>
+    <div class="card" data-rep="top"><h2>🔎 Biggest single expenses</h2><p class="muted" style="margin:-4px 0 10px">The largest individual charges in this window.</p><div id="repTop"></div></div>
+    <div class="card" data-rep="split"><h2>🧾 Bills vs everyday</h2><p class="muted" style="margin:-4px 0 10px">How much of your spending is fixed obligation and how much is choice.</p><div id="repSplit"></div></div>
+    <div class="card" data-rep="trend" id="repTrendCard" style="display:none"><h2>⚠️ Trending high</h2><p class="muted" style="margin:-4px 0 10px">Categories running above their normal 3-month average.</p><div id="repTrend"></div></div>
+    <div class="card" data-rep="pace" id="repPaceCard" style="display:none"><h2>⏱️ Pace check — this pay period</h2><p class="muted" style="margin:-4px 0 10px">Spending faster than the period's days are passing.</p><div id="repPace"></div></div>
+    <div class="card" data-rep="who"><h2>Who spent it</h2><div id="repWho"></div></div>
   </section>
 
   <!-- ============ ROADMAP ============ -->
@@ -662,9 +675,9 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
     <div style="text-align:center;margin:4px 0 14px">
       <button class="btn ghost sm" onclick="scanReceipt()">📷 Scan receipt</button>
     </div>
-    <label class="f"><span>Payee / description</span><input class="in" id="txPayee" list="payeeList" placeholder="Commissary, gas, allowance…"><datalist id="payeeList"></datalist></label>
-    <label class="f"><span>Note (optional)</span><input class="in" id="txNote"></label>
-    <label class="f"><span>Date</span><input class="in" type="date" id="txDate"></label>
+    <label class="f"><span id="txPayeeLbl">Payee / description</span><input class="in" id="txPayee" list="payeeList" placeholder="Commissary, gas, allowance…"><datalist id="payeeList"></datalist></label>
+    <label class="f"><span id="txNoteLbl">Note (optional)</span><input class="in" id="txNote"></label>
+    <label class="f"><span id="txDateLbl">Date</span><input class="in" type="date" id="txDate"></label>
     <button class="btn brass" id="txSave" onclick="saveTx()">Log it</button>
     <div class="muted" id="scanStatus" style="text-align:center;margin-top:8px"></div>
   </div>
@@ -743,6 +756,40 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
 </div>
 
 <!-- ============ SHEET: FILL PICKER ============ -->
+<div class="sheet" id="shSweep">
+  <div class="bg" onclick="closeSheet('shSweep')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shSweep')">✕</button>
+    <h3>Sweep extra money</h3>
+    <p class="muted" style="margin:-6px 0 14px;line-height:1.55">Every envelope keeps whatever it doesn't spend. This is where you move that surplus somewhere it's needed. Nothing moves until you tap Move. Goals and yearly sinking funds are left alone — building up is their job.</p>
+    <div id="sweepBody"></div>
+    <div class="kv" style="margin-top:6px"><span>Selected to move</span><b id="sweepTotal" class="mono">$0.00</b></div>
+    <label class="f" style="margin-top:12px"><span>Move it into</span><select class="in" id="sweepTo"></select></label>
+    <button class="btn brass" style="width:100%" onclick="doSweep()">Move the checked money</button>
+  </div>
+</div>
+
+<div class="sheet" id="shRepPick">
+  <div class="bg" onclick="closeSheet('shRepPick')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shRepPick')">✕</button>
+    <h3>Choose which reports show</h3>
+    <p class="muted" style="margin:-6px 0 14px">Turn off anything you don't use. Turn it back on whenever you want — nothing is deleted, only hidden.</p>
+    <div id="repPickBody"></div>
+  </div>
+</div>
+
+<div class="sheet" id="shMerge">
+  <div class="bg" onclick="closeSheet('shMerge')"></div>
+  <div class="panel">
+    <div class="grab"></div><button class="close" onclick="closeSheet('shMerge')">✕</button>
+    <h3>Combine split bills</h3>
+    <p class="muted" style="margin:-6px 0 14px;line-height:1.55">You once had bills split into a "— 1st" and a "— 15th" envelope. One envelope per bill is simpler: it holds a monthly total and fills from whichever payday you choose. Check the numbers below, fix anything wrong, then combine. Every dollar already funded and every transaction moves across — nothing is lost, and you can still edit the envelope afterwards.</p>
+    <div id="mgBody"></div>
+    <button class="btn brass" style="width:100%" onclick="mergeDupCommit()">Combine the ones above</button>
+  </div>
+</div>
+
 <div class="sheet" id="shFillPick">
   <div class="bg" onclick="closeSheet('shFillPick')"></div>
   <div class="panel">
@@ -1101,6 +1148,7 @@ function connectCloud(){
       const v=snap.val();
       if(v){data=Object.assign(blank(),v);data.settings=Object.assign(blank().settings,v.settings||{});
         migrateBillsIntoEnvelopes(); // cloud data arrives AFTER boot — migrate here or it never happens
+        migrateAllEnvelopesRoll();   // same reason: must run against CLOUD data, not the local cache
         cache();renderAll();}
     },err=>{setDot(false);toast('Sync error — check database rules')});
     fdb.ref('.info/connected').on('value',s=>setDot(!!s.val()));
@@ -1190,6 +1238,10 @@ function envAdd(envId,p){ // money ADDED to the envelope beyond its assignment �
     if(t.kind==='mv'&&t.to===envId)s+=t.amt}
   return s}
 function envFunded(envId,p){return alloc(envId,p)+envAdd(envId,p)}
+function rolledIn(envId,p){ // what this envelope carried IN from the period before
+  if(p<=minPid())return 0;
+  return Math.max(0,avail(envId,p-1))}
+function rolledInTotal(p){return envs().reduce((s,e)=>s+rolledIn(e.id,p),0)}
 function envFlow(envId,p){return envSpend(envId,p)-envAdd(envId,p)} // net, kept for existing math
 function avail(envId,p){const e=data.env[envId];if(!e)return 0;
   if(e.roll||e.kind==='goal'){let s=0;for(let q=minPid();q<=p;q++)s+=alloc(envId,q)-envFlow(envId,q);return s}
@@ -1288,7 +1340,7 @@ function deleteTxDetail(){if(!txDetailId)return;const t=data.tx[txDetailId];
 function billForEnv(envId){const e=data.env?.[envId];if(!e||!envDueDay(e))return null;
   return{id:envId,name:e.name,amt:monthlyOf(e),day:envDueDay(e),env:envId,paid:e.paid||{}}}
 function billPaidIn(b,p){return b?envPaidIn(data.env[b.env||b.id],p):false}
-function spareLabel(spare){ // returns {label, valueTxt, cls} — never an ambiguous bare "left over"
+function spareLabel(spare){ // PAYCHECK side: income minus everything assigned out of it
   if(spare<0)return{label:'Short by',valueTxt:fmt(-spare),cls:'neg-t'};
   if(spare===0)return{label:'Exactly funded',valueTxt:'$0.00 ✓',cls:'pos-t'};
   return{label:'Extra, unassigned',valueTxt:fmt(spare),cls:'amber-t'}}
@@ -1320,11 +1372,16 @@ function envRowCard(e,a,f,av,t,bi){
   else if(over)sub='OVER by '+fmt(-av)+' · funded '+fmt(a)+' · spent '+fmt(f);
   else sub='funded '+fmt(a)+' of '+fmt(total)+' · spent '+fmt(f)+(dd?' · due the '+ordSuf(dd):'');
   const pArg=(bi&&bi.p!=null)?(','+bi.p):'';
+  // what carried in from last period, shown under the bar
+  let rollLine='';
+  if(!paid&&bi&&bi.p!=null){const ri=rolledIn(e.id,bi.p);
+    rollLine='<span class="rollnote'+(ri>0?' pos-t':'')+'">'+
+      (ri>0?('↩ includes '+fmt(ri)+' rolled over from '+periodName(bi.p-1)):'nothing rolled over')+'</span>'}
   return '<button class="envr'+(paid?' paid':'')+'" onclick="openFund(\''+e.id+'\''+pArg+')">'+
     '<span class="r1"><span class="nm">'+(isGoal?'🎯 ':'')+esc(e.name)+(paid?'<span class="paidstamp">PAID ✓</span>':'')+'</span>'+
     '<span class="fr'+(over?' neg-t':'')+'">'+main+'</span></span>'+
     '<span class="r2">'+sub+'</span>'+
-    '<span class="ebar"><i class="'+cls+'" style="width:'+pct+'%"></i></span></button>'}
+    '<span class="ebar"><i class="'+cls+'" style="width:'+pct+'%"></i></span>'+rollLine+'</button>'}
 
 let hTile=0;
 function tapTile(n){hTile=(hTile===n)?0:n;renderHome()}
@@ -1390,11 +1447,10 @@ function renderPulse(p){
   const goalTarget=goals.reduce((s,e)=>s+(e.target||0),0);
   const row=(label,sub,val,cls)=>'<div class="kv"><span>'+label+(sub?'<br><span class="s" style="font-size:.68rem;color:var(--ink3)">'+sub+'</span>':'')+'</span><b class="'+(cls||'')+'">'+val+'</b></div>';
   let h='';
-  h+=row('Period progress','day '+elapsed+' of '+totalD,timePct+'%');
   h+=row('Discretionary spent',fmt(spent)+' of '+fmt(funded),spendPct+'%',spendPct>timePct+15?'neg-t':'pos-t');
-  if(spendPct>timePct+15)h+='<div class="muted" style="font-size:.72rem;margin:2px 0 8px">Spending is running ahead of the calendar — '+spendPct+'% of the money, '+timePct+'% of the days.</div>';
+  const rolled=rolledInTotal(p);
+  if(rolled)h+=row('Rolled over from last period','left in your envelopes at the end of '+periodName(p-1),fmt(rolled),'pos-t');
   if(overs.length)h+=row('⚠️ Over budget',overs.map(e=>esc(e.name)).join(', '),overs.length,'neg-t');
-  if(goals.length)h+=row('Saved toward goals',goalTarget?('of '+fmt(goalTarget)+' target'):'',fmt(goalSaved));
   const inc=extraIncomeFor(p);
   if(inc)h+=row('Extra income logged','added to this period',fmt(inc),'pos-t');
   return $('#hPulse').innerHTML=h}
@@ -1427,13 +1483,10 @@ function renderHome(){const p=curP();
   renderHomeDrawer(p);
   // today & next
   const rows=[];
-  upcomingBills(7).slice(0,3).forEach(b=>{const dd=Math.round((b.due-now)/864e5);
+  // dated bills only — yearly sinking-fund goals were noise here and are gone on purpose
+  upcomingBills(7).slice(0,4).forEach(b=>{const dd=Math.round((b.due-now)/864e5);
     const when=dd<=0?T('g.today2'):dd===1?T('g.tomorrow'):b.due.toLocaleDateString(loc,{weekday:'short'});
     rows.push('<div class="trow"><span>📄 '+esc(b.name)+' · '+when+'</span><b>'+fmt(b.amt)+'</b></div>')});
-  const goal=envs().filter(e=>e.kind==='goal'&&e.targetDate&&(e.target||0)>avail(e.id,p))
-    .map(e=>{const rem=Math.max(0,(e.target||0)-avail(e.id,p));const per=Math.max(1,pidOf(e.targetDate)-p);
-      return{e,need:Math.ceil(rem/per),got:alloc(e.id,p)}}).sort((a,b)=>b.need-a.need)[0];
-  if(goal)rows.push('<div class="trow"><span>🎯 '+esc(goal.e.name)+' '+T('g.thisperiod')+'</span><b>'+fmt0(goal.got)+(goal.got>=goal.need?' ✓':' / '+fmt0(goal.need))+'</b></div>');
   $('#hTodayCard').style.display=rows.length?'':'none';
   $('#hToday').innerHTML=rows.join('');
   $('#hTodayLbl').textContent=T('g.todaynext');
@@ -1563,6 +1616,9 @@ function renderEnvViewMonth(){
   const sp2=$('#envSpare');sp2.textContent=sl.valueTxt;sp2.className=sl.cls;
   $('#fillLbl').textContent=ltf>0?('Fill envelopes — '+fmt(ltf)+' to go'):'This pay period fully funded ✓';
   $('#fixRollBtn').style.display=hasRollIssues()?'block':'none';
+  const swT=sweepTotalAvail(curP());
+  $('#sweepBtn').style.display=swT>0?'block':'none';
+  $('#sweepLbl').textContent='Sweep extra money — '+fmt(swT)+' sitting spare';
   const dp=dupPairs();
   $('#mergeDupBtn').style.display=dp.length?'block':'none';
   $('#mergeDupLbl').textContent='Combine '+dp.length+' split bill'+(dp.length===1?'':'s')+' into single envelopes';
@@ -1670,6 +1726,28 @@ function trailingAvg(envId){const now=new Date();const sums=[];
     for(const t of Object.values(data.tx||{}))if(t.kind==='exp'&&t.env===envId&&t.date.slice(0,7)===key)s+=t.amt;
     sums.push(s)}
   return sums.reduce((a,b)=>a+b,0)/sums.length}
+const REP_CARDS=[
+  {k:'flow',  n:'📊 Income vs spending — 6 months'},
+  {k:'env',   n:"Where we're spending most"},
+  {k:'top',   n:'🔎 Biggest single expenses'},
+  {k:'split', n:'🧾 Bills vs everyday'},
+  {k:'trend', n:'⚠️ Trending high'},
+  {k:'pace',  n:'⏱️ Pace check — this pay period'},
+  {k:'who',   n:'Who spent it'}];
+function repHidden(){return new Set(data.settings?.repHide||[])}
+function repToggle(k){const h=repHidden();
+  if(h.has(k))h.delete(k);else h.add(k);
+  put('settings/repHide',[...h]);openRepPick()}
+function openRepPick(){const h=repHidden();
+  $('#repPickBody').innerHTML=REP_CARDS.map(c=>
+    '<div class="kv"><span>'+c.n+'</span>'+
+    '<button class="btn '+(h.has(c.k)?'ghost':'sec')+' sm" onclick="repToggle(\''+c.k+'\')">'+
+    (h.has(c.k)?'＋ Add back':'✕ Hide')+'</button></div>').join('');
+  openSheet('shRepPick')}
+function applyRepVisibility(){const h=repHidden();
+  document.querySelectorAll('[data-rep]').forEach(el=>{
+    if(h.has(el.dataset.rep)){el.style.display='none';el.dataset.repOff='1'}
+    else if(el.dataset.repOff){el.style.display='';delete el.dataset.repOff}})}
 function renderReports(){const now=new Date();const months=[];
   for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(ym(d))}
   const inc=months.map(m=>0),exp=months.map(m=>0);
@@ -1677,6 +1755,8 @@ function renderReports(){const now=new Date();const months=[];
     if(t.kind==='inc')inc[i]+=t.amt;if(t.kind==='exp')exp[i]+=t.amt}
   barChart($('#repFlow'),months.map(m=>new Date(m+'-02').toLocaleDateString('en-US',{month:'short'})),
     [{c:'#2C5C49',v:inc},{c:'#B3402F',v:exp}]);
+  const lastM=new Date(months[months.length-1]+'-02').toLocaleDateString('en-US',{month:'long'});
+  $('#repFlowNow').innerHTML=lastM+': <b class="pos-t">'+fmt(inc[inc.length-1])+' in</b> · <b class="neg-t">'+fmt(exp[exp.length-1])+' out</b>';
   $('#repWin30').classList.toggle('on',repWindow==='30');$('#repWinMonth').classList.toggle('on',repWindow==='month');
   const[ws,we]=windowRange();
   const byEnv={},byWho={};
@@ -1711,7 +1791,26 @@ function renderReports(){const now=new Date();const months=[];
   $('#repPaceCard').style.display=paceFlags.length?'':'none';
   $('#repPace').innerHTML=paceFlags.map(x=>
     '<div class="kv"><span>'+esc(x.name)+'</span><b class="amber-t">'+Math.round(x.spendPct*100)+'% spent</b></div>'+
-    '<div class="muted" style="margin:-4px 0 8px">only '+Math.round(timePct*100)+'% of the period has passed</div>').join('')}
+    '<div class="muted" style="margin:-4px 0 8px">only '+Math.round(timePct*100)+'% of the period has passed</div>').join('');
+  // biggest single expenses in the window
+  const big=Object.values(data.tx||{}).filter(t=>t.kind==='exp'&&t.date>=ws&&t.date<=we)
+    .sort((a,b)=>b.amt-a.amt).slice(0,8);
+  $('#repTop').innerHTML=big.map(t=>
+    '<div class="kv"><span>'+esc(t.payee||'(no payee)')+'<br><span class="s" style="font-size:.68rem;color:var(--ink3)">'+
+    esc(data.env[t.env]?.name||'No envelope')+' · '+t.date+'</span></span><b class="mono">'+fmt(t.amt)+'</b></div>').join('')
+    ||'<div class="empty">No spending logged in this window.</div>';
+  // bills vs everyday
+  const bIdsR=billEnvIds();let fixedT=0,freeT=0;
+  for(const t of Object.values(data.tx||{})){if(t.kind!=='exp'||t.date<ws||t.date>we)continue;
+    if(bIdsR.has(t.env))fixedT+=t.amt;else freeT+=t.amt}
+  const bothT=fixedT+freeT;
+  $('#repSplit').innerHTML=bothT?(
+    '<div class="kv"><span>Bills &amp; fixed obligations</span><b class="mono">'+fmt(fixedT)+' · '+Math.round(fixedT/bothT*100)+'%</b></div>'+
+    '<div class="bar" style="margin:2px 0 12px"><i style="width:'+(fixedT/bothT*100)+'%"></i></div>'+
+    '<div class="kv"><span>Everyday &amp; discretionary</span><b class="mono">'+fmt(freeT)+' · '+Math.round(freeT/bothT*100)+'%</b></div>'+
+    '<div class="bar" style="margin:2px 0 4px"><i class="part" style="width:'+(freeT/bothT*100)+'%"></i></div>'
+  ):'<div class="empty">No spending logged in this window.</div>';
+  applyRepVisibility()}
 
 function prepCanvas(cv){const dpr=window.devicePixelRatio||1;if(!cv.dataset.h)cv.dataset.h=cv.getAttribute('height')||150;const w=cv.clientWidth||300,h=+cv.dataset.h;
   cv.width=w*dpr;cv.height=h*dpr;const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);return{ctx,w,h}}
@@ -2026,14 +2125,45 @@ function renderSubs(){const subs=bills().filter(b=>b.sub);
 const VAULT_SUGGEST=['SGLI coverage & beneficiaries','SBP election documented','Will (both spouses)','Power of attorney','Medical directives','Emergency contacts card','DD-214 location (on retirement)','TSP beneficiaries','Bank & Vanguard beneficiaries','Insurance policies list','Password manager access plan'];
 function vault(){return Object.entries(data.vault||{}).map(([id,v])=>({id,...v}))}
 let vaultId=null;
+function vaultDismissed(){return new Set(data.settings?.vaultHide||[])}
+function suggestList(){ // the built-in list, minus anything dismissed, plus anything added
+  const hid=vaultDismissed();
+  const own=data.settings?.vaultOwn||[];
+  return [...VAULT_SUGGEST,...own].filter(x=>!hid.has(x))}
+function dismissSuggest(name){const hid=vaultDismissed();hid.add(name);
+  const own=(data.settings?.vaultOwn||[]).filter(x=>x!==name);
+  put('settings/vaultOwn',own.length?own:null);
+  put('settings/vaultHide',[...hid]);toast('Removed from suggestions')}
+function addSuggest(){const n=prompt('Add a suggestion to the list (e.g. "Safe deposit box key")');
+  if(!n||!n.trim())return;
+  const name=n.trim();
+  const hid=vaultDismissed();hid.delete(name);
+  const own=[...(data.settings?.vaultOwn||[])];
+  if(!VAULT_SUGGEST.includes(name)&&!own.includes(name))own.push(name);
+  put('settings/vaultHide',hid.size?[...hid]:null);
+  put('settings/vaultOwn',own);toast('Added to suggestions')}
+function restoreSuggest(){if(!data.settings?.vaultHide)return toast('Nothing has been removed');
+  put('settings/vaultHide',null);toast('Suggestions restored')}
 function renderVault(){const vs=vault();const ic={done:'✅',review:'🟡',missing:'🔴'};
   $('#vaultList').innerHTML=vs.length?vs.sort((a,b)=>({missing:0,review:1,done:2}[a.status]-{missing:0,review:1,done:2}[b.status]))
-    .map(v=>'<button class="tx" onclick="openVaultForm(\''+v.id+'\')"><span class="iconb">'+(ic[v.status]||'•')+'</span>'+
-    '<span class="mid"><span class="p">'+esc(v.name)+'</span><br><span class="s">'+esc(v.note||'')+(v.date?' · reviewed '+dShort(v.date):'')+'</span></span></button>').join('')
+    .map(v=>'<div class="tx"><span class="iconb">'+(ic[v.status]||'•')+'</span>'+
+    '<button class="mid" style="background:none;border:0;text-align:left;padding:0;font:inherit;color:inherit" onclick="openVaultForm(\''+v.id+'\')">'+
+    '<span class="p">'+esc(v.name)+'</span><br><span class="s">'+esc(v.note||'')+(v.date?' · reviewed '+dShort(v.date):'')+'</span></button>'+
+    '<button class="btn ghost sm" onclick="deleteVaultRow(\''+v.id+'\')">✕</button></div>').join('')
     :'<div class="empty">Nothing tracked yet — tap a suggestion below or add your own.</div>';
   const have=new Set(vs.map(v=>v.name.toLowerCase()));
-  $('#vaultSuggest').innerHTML=VAULT_SUGGEST.filter(s=>!have.has(s.toLowerCase()))
-    .map(s=>'<button class="c" onclick="quickVault(\''+esc(s).replace(/'/g,"\\'")+'\')">＋ '+esc(s)+'</button>').join('')||'<span class="muted">All suggestions tracked — outstanding.</span>'}
+  const sug=suggestList().filter(s=>!have.has(s.toLowerCase()));
+  $('#vaultSuggest').innerHTML=sug.map(s=>{const q=esc(s).replace(/'/g,"\\'");
+    return '<span class="c" style="display:inline-flex;align-items:center;gap:6px">'+
+      '<button style="background:none;border:0;font:inherit;color:inherit;padding:0" onclick="quickVault(\''+q+'\')">＋ '+esc(s)+'</button>'+
+      '<button style="background:none;border:0;font:inherit;color:var(--ink3);padding:0" onclick="dismissSuggest(\''+q+'\')">✕</button></span>'}).join('')
+    ||'<span class="muted">Nothing left in the suggestion list.</span>';
+  $('#vaultSuggest').innerHTML+='<div style="width:100%;margin-top:12px;display:flex;gap:8px">'+
+    '<button class="btn sec sm" onclick="addSuggest()">＋ Add a suggestion</button>'+
+    '<button class="btn ghost sm" onclick="restoreSuggest()">↺ Restore removed</button></div>'}
+function deleteVaultRow(id){const v=data.vault?.[id];if(!v)return;
+  if(!confirm('Delete "'+v.name+'" from your readiness list?'))return;
+  put('vault/'+id,null);toast('Deleted')}
 function quickVault(name){put('vault/'+uid(),{name,status:'review',note:'',date:null});toast('Added — set its status')}
 function openVaultForm(id){vaultId=id||null;const v=id?data.vault[id]:null;
   $('#vaultFormTitle').textContent=v?'Edit item':'Readiness item';
@@ -2139,8 +2269,9 @@ function applyLang(){
   const zbl=document.querySelector('#zerobeam .lbl');if(zbl)zbl.textContent=T('zb.toassign');
   // tx sheet
   const segB=document.querySelectorAll('#txSeg button');if(segB[0]){segB[0].textContent=T('tx.spend');segB[1].textContent=T('tx.income')}
-  const lbls=document.querySelectorAll('#shTx label.f > span');
-  if(lbls.length>=3){lbls[0].textContent=T('tx.payee');lbls[1].textContent=T('tx.note');lbls[2].textContent=T('tx.date')}
+  // by id, never by position — positional lookup put every label on the wrong field
+  const setL=(id,k)=>{const el=$(id);if(el)el.textContent=T(k)};
+  setL('#txPayeeLbl','tx.payee');setL('#txNoteLbl','tx.note');setL('#txDateLbl','tx.date');
   $('#txSave').textContent=T('tx.log');
   const scanBtn=document.querySelector('#shTx .btn.ghost.sm');if(scanBtn)scanBtn.textContent=T('tx.scan');
   // more menu
@@ -2272,7 +2403,7 @@ function efHint(){ // NEVER writes either box. The two amounts are independent a
 function efConv(){efHint()} // legacy name, kept so nothing else breaks
 function openEnvForm(id,kind){efId=id||null;const e=id?data.env[id]:null;
   efKindV=e?.kind||kind||'spend';efFundFromV=e?.fundFrom||'both';
-  efRollV=e?(!!e.roll):(efKindV==='goal'||!!(e&&envDueDay(e)));
+  efRollV=true;
   $('#envFormTitle').textContent=e?'Edit envelope':'New envelope';
   $('#efName').value=e?.name||'';$('#efTarget').value=e?.target?(e.target/100):'';$('#efTargetDate').value=e?.targetDate||'';
   const mo=e?monthlyOf(e):0;
@@ -2290,7 +2421,7 @@ function efSetFundFrom(v){efFundFromV=v;
     (hasPP?'Your per-paycheck amount goes in on the 15th only.':'The FULL monthly total comes from the 15th\'s paycheck only.');
   if(v!=='both'){efRollV=true;efSetRoll(true)}
   if($('#efWeekHint'))efHint();
-  $('#efRollWrap').style.display=(v!=='both'||efKindV==='goal')?'none':'block'}
+  $('#efRollWrap').style.display='none'}
 function dupPairs(){ // envelopes split as "Name — 1st" / "Name — 15th" belong as ONE envelope now
   const byBase={};
   for(const e of envs()){
@@ -2298,18 +2429,52 @@ function dupPairs(){ // envelopes split as "Name — 1st" / "Name — 15th" belo
     if(!m)continue;
     const base=m[1].trim();(byBase[base]=byBase[base]||[]).push(e)}
   return Object.entries(byBase).filter(([,arr])=>arr.length>1).map(([base,arr])=>({base,arr}))}
+/* The combine tool never guesses a total silently any more. It opens a sheet listing every
+   split pair it found, what each half currently says, and an editable monthly + per-paycheck
+   box you can correct before anything is written. Nothing merges until you tap Combine. */
 function mergeDupEnvelopes(){
   const pairs=dupPairs();
   if(!pairs.length){toast('No split duplicates found — nothing to merge');return}
-  const lines=pairs.map(p=>{const tot=p.arr.reduce((s,e)=>s+monthlyOf(e),0);
-    return '• '+p.base+' → one envelope at '+fmt(tot)+'/month'}).join('\n');
-  if(!confirm('Combine these split envelopes into one each?\n\n'+lines+
-    '\n\nAll funded money and transaction history moves to the combined envelope. Nothing is lost.'))return;
-  for(const{base,arr}of pairs){
+  $('#mgBody').innerHTML=pairs.map((pr,i)=>{
+    const sum=pr.arr.reduce((s,e)=>s+monthlyOf(e),0);
+    const biggest=Math.max(...pr.arr.map(e=>monthlyOf(e)));
+    const parts=pr.arr.map(e=>'<div class="kv" style="padding:5px 0"><span>'+esc(e.name)+
+      (envDueDay(e)?(' · due the '+ordSuf(envDueDay(e))):'')+'</span><b class="mono">'+fmt(monthlyOf(e))+'/mo</b></div>').join('');
+    return '<div class="card" style="margin-bottom:12px" data-mg="'+i+'">'+
+      '<label class="f"><span>Combined envelope name</span><input class="in" id="mgName'+i+'" value="'+esc(pr.base)+'"></label>'+
+      '<div class="muted" style="font-size:.7rem;margin:-4px 0 6px">Merging these '+pr.arr.length+':</div>'+parts+
+      '<div class="grid2 pair" style="margin-top:10px">'+
+        '<label class="f"><span>Monthly total</span><input class="in mono" id="mgMo'+i+'" inputmode="decimal" value="'+(sum/100).toFixed(2)+'"></label>'+
+        '<label class="f"><span>Per paycheck</span><input class="in mono" id="mgPP'+i+'" inputmode="decimal" placeholder="auto"></label>'+
+      '</div>'+
+      '<div class="muted" style="font-size:.7rem;margin-top:-4px">The halves above add up to '+fmt(sum)+'. If one of them was already edited to the whole bill, that number is too high — type the real monthly amount here. The largest half on its own is '+fmt(biggest)+'.</div>'+
+      '<div style="margin-top:10px"><button class="btn ghost sm" onclick="mgSkip('+i+')" id="mgSkipBtn'+i+'">Skip this one</button></div>'+
+      '</div>'}).join('');
+  mgSkipped={};
+  openSheet('shMerge')}
+let mgSkipped={};
+function mgSkip(i){mgSkipped[i]=!mgSkipped[i];
+  const card=document.querySelector('[data-mg="'+i+'"]');
+  if(card)card.style.opacity=mgSkipped[i]?'.4':'1';
+  const b=$('#mgSkipBtn'+i);if(b)b.textContent=mgSkipped[i]?'↺ Include this one':'Skip this one'}
+function mergeDupCommit(){
+  const pairs=dupPairs();
+  // read EVERY field before the first write — put() re-renders and would clobber the rest
+  const plan=[];
+  pairs.forEach((pr,i)=>{
+    if(mgSkipped[i])return;
+    const name=($('#mgName'+i).value||'').trim()||pr.base;
+    const monthly=toC($('#mgMo'+i).value)||0;
+    const ppRaw=($('#mgPP'+i).value||'').trim();
+    plan.push({pr,name,monthly,perPay:ppRaw?(toC(ppRaw)||null):null})});
+  if(!plan.length){toast('Nothing selected to combine');return}
+  if(plan.some(x=>!x.monthly)){toast('Give every combined envelope a monthly total above $0');return}
+  closeSheet('shMerge');
+  for(const{pr,name,monthly,perPay}of plan){
+    const base=name,arr=pr.arr,total=monthly;
     // keep the earliest-due one as the survivor so the due day stays right
     const sorted=[...arr].sort((a,b)=>(envDueDay(a)||99)-(envDueDay(b)||99));
     const keep=sorted[0],drop=sorted.slice(1);
-    const total=arr.reduce((s,e)=>s+monthlyOf(e),0);
     // move every budget allocation onto the survivor
     for(const[pid,row]of Object.entries(data.budgets||{})){
       let add=0;for(const d of drop){if(row[d.id]!=null){add+=row[d.id];delete row[d.id]}}
@@ -2322,7 +2487,7 @@ function mergeDupEnvelopes(){
     // merge paid history
     const paid=Object.assign({},keep.paid||{});
     for(const d of drop)Object.assign(paid,d.paid||{});
-    setPath(data,'env/'+keep.id,{...data.env[keep.id],name:base,monthly:total,perPay:null,
+    setPath(data,'env/'+keep.id,{...data.env[keep.id],name:base,monthly:total,perPay,
       def:isSemi()?Math.floor(total/2):total,roll:true,paid:Object.keys(paid).length?paid:null});
     for(const d of drop)setPath(data,'env/'+d.id,null)}
   cache();
@@ -2330,8 +2495,52 @@ function mergeDupEnvelopes(){
     rootRef.child('budgets').set(data.budgets||{}).catch(()=>{});
     rootRef.child('tx').set(data.tx||{}).catch(()=>{})}
   renderAll();
-  toast('Merged — each bill is now a single envelope')}
-function hasRollIssues(){return envs().some(e=>(envDueDay(e)&&!e.roll))}
+  toast('Combined '+plan.length+' bill'+(plan.length===1?'':'s')+' into single envelopes')}
+/* SWEEP — surplus is anything an envelope holds beyond what this period asked of it.
+   No arbitrary dollar threshold: every envelope carrying a surplus is listed, biggest first,
+   and the envelopes that are SHORT are named at the top so you can see where it should go. */
+function surplusList(p){
+  return envs().filter(e=>e.kind!=='goal'&&!(data.annuals&&Object.values(data.annuals).some(a=>a.env===e.id)))
+    .map(e=>({e,extra:avail(e.id,p)-periodTarget(e,p)}))
+    .filter(x=>x.extra>0)
+    .sort((a,b)=>b.extra-a.extra)}
+function shortList(p){
+  return envs().map(e=>({e,gap:periodTarget(e,p)-avail(e.id,p)}))
+    .filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap)}
+function sweepTotalAvail(p){return surplusList(p).reduce((s,x)=>s+x.extra,0)}
+function openSweep(){const p=curP();const sl=surplusList(p);
+  if(!sl.length){toast('No envelope is carrying extra right now');return}
+  $('#sweepBody').innerHTML=
+    (function(){const sh=shortList(p);return sh.length?
+      '<div class="notice" style="margin-bottom:12px">Running short right now: '+
+      sh.slice(0,5).map(x=>esc(x.e.name)+' ('+fmt(x.gap)+')').join(', ')+'</div>':''})()+
+    sl.map(x=>'<label class="kv" style="align-items:center"><span>'+esc(x.e.name)+
+      '<br><span class="s" style="font-size:.68rem;color:var(--ink3)">holding '+fmt(avail(x.e.id,p))+
+      ' · this period asked for '+fmt(periodTarget(x.e,p))+'</span></span>'+
+      '<span style="display:flex;align-items:center;gap:10px"><b class="mono">'+fmt(x.extra)+'</b>'+
+      '<input type="checkbox" class="sweepChk" data-env="'+x.e.id+'" data-amt="'+x.extra+'" onchange="sweepRecalc()"></span></label>').join('');
+  const opts=envs().map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');
+  $('#sweepTo').innerHTML='<option value="_assign">← Back to To Assign (redistribute by hand)</option>'+opts;
+  sweepRecalc();openSheet('shSweep')}
+function sweepRecalc(){let t=0;
+  document.querySelectorAll('.sweepChk').forEach(c=>{if(c.checked)t+=+c.dataset.amt});
+  $('#sweepTotal').textContent=fmt(t)}
+function doSweep(){const p=curP();
+  // read every field BEFORE the first put — put() re-renders and clobbers the sheet
+  const picks=[];document.querySelectorAll('.sweepChk').forEach(c=>{if(c.checked)picks.push({env:c.dataset.env,amt:+c.dataset.amt})});
+  const dest=$('#sweepTo').value;
+  if(!picks.length){toast('Tick at least one envelope to move money out of');return}
+  const total=picks.reduce((s,x)=>s+x.amt,0);
+  if(dest!=='_assign'&&picks.some(x=>x.env===dest)){toast('That envelope is one of the ones you are sweeping — pick a different destination');return}
+  const destName=dest==='_assign'?'To Assign':(data.env[dest]?.name||'');
+  if(!confirm('Move '+fmt(total)+' out of '+picks.length+' envelope'+(picks.length===1?'':'s')+' into '+destName+'?'))return;
+  closeSheet('shSweep');
+  const row={...(data.budgets?.[p]||{})};
+  for(const x of picks)row[x.env]=(row[x.env]||0)-x.amt;
+  if(dest!=='_assign')row[dest]=(row[dest]||0)+total;
+  put('budgets/'+p,row);
+  toast('Moved '+fmt(total)+' into '+destName)}
+function hasRollIssues(){return envs().some(e=>!e.roll)}
 function fixRollSettings(){
   const bad=envs().filter(e=>envDueDay(e)&&!e.roll);
   if(!bad.length){toast('Nothing to fix — every envelope is set correctly');return}
@@ -2340,7 +2549,7 @@ function fixRollSettings(){
   toast('Fixed '+bad.length+' envelope(s)')}
 function efSetKind(k){efKindV=k;document.querySelectorAll('#efKind .c').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
   $('#efGoalFields').style.display=k==='goal'?'block':'none';
-  $('#efRollWrap').style.display=(k==='goal'||efFundFromV!=='both')?'none':'block'}
+  $('#efRollWrap').style.display='none'}
 function efSetRoll(v){efRollV=v;$('#efRoll1').classList.toggle('on',v);$('#efRoll0').classList.toggle('on',!v)}
 function saveEnv(){const name=$('#efName').value.trim();if(!name)return toast('Give it a name');
   const id=efId||uid();const prev=efId?data.env[efId]:null;
@@ -2351,7 +2560,7 @@ function saveEnv(){const name=$('#efName').value.trim();if(!name)return toast('G
   const dueDay=(dd>=1&&dd<=31)?dd:null;
   const fundFrom=efFundFromV;
   // dated envelopes must roll, or the money can never accumulate to cover the bill
-  const roll=(efKindV==='goal'||dueDay)?true:(fundFrom!=='both'?true:efRollV);
+  const roll=true; // every envelope carries its leftover forward
   put('env/'+id,{name,kind:efKindV,roll,monthly,perPay,def:isSemi()?Math.floor(monthly/2):monthly,
     dueDay,fundFrom:fundFrom!=='both'?fundFrom:null,
     startP:prev?.startP??curP(),paid:prev?.paid||null,sub:prev?.sub||null,
@@ -2517,6 +2726,10 @@ function importJSON(inp){const f=inp.files[0];inp.value='';if(!f)return;
     catch(e){toast('That file didn\'t parse')}};r.readAsText(f)}
 
 /* ================= boot ================= */
+function migrateAllEnvelopesRoll(){ // every envelope carries its leftover forward — no exceptions
+  let n=0;for(const[id,e]of Object.entries(data.env||{})){if(e&&e.roll!==true){e.roll=true;n++}}
+  if(!n)return;
+  cache();if(rootRef)rootRef.child('env').set(data.env).catch(()=>{})}
 function migrateBillsIntoEnvelopes(){ // one-time: bills become a dueDay attribute on their envelope
   if(!data.bills||!Object.keys(data.bills).length)return false;
   let moved=0;
@@ -2541,6 +2754,7 @@ function bootstrap(){
   if(data.settings.freq===14&&!Object.keys(data.tx||{}).length&&!Object.keys(data.budgets||{}).length){
     data.settings.freq='semi';cache()}
   migrateBillsIntoEnvelopes();
+  migrateAllEnvelopesRoll();
   if(!cfg.mode){openSheet('shSettings');renderSettings()}
   else{if(cfg.mode==='cloud')connectCloud();else setDot(true)}
   initTxDelegation();
