@@ -343,6 +343,7 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <div class="muted" style="font-size:.7rem;margin-top:8px;line-height:1.5"><b>Left to fund</b> is what your envelopes are short of their targets. <b>Extra, unassigned</b> is how much of this paycheck hasn't been given a job yet. They only match when every dollar is going exactly where the targets say.</div>
     </div>
     <button class="btn ghost sm" id="fixRollBtn" style="width:100%;margin-bottom:9px;display:none" onclick="fixRollSettings()">🔧 Fix envelope carry-over settings</button>
+    <button class="btn ghost sm" id="fixHalfBtn" style="width:100%;margin-bottom:9px;display:none" onclick="fixSplitNameFunding()">🔧 <span id="fixHalfLbl"></span></button>
     <button class="btn sec sm" id="sweepBtn" style="width:100%;margin-bottom:9px;display:none" onclick="openSweep()">🧹 <span id="sweepLbl"></span></button>
     <button class="btn sec" id="mergeDupBtn" style="width:100%;margin-bottom:9px;display:none" onclick="mergeDupEnvelopes()">🔗 <span id="mergeDupLbl"></span></button>
     <button class="btn brass" style="width:100%;margin-bottom:9px" onclick="openFillPicker()">⚡ <span id="fillLbl">Fill envelopes</span></button>
@@ -1449,7 +1450,9 @@ function renderPulse(p){
   let h='';
   h+=row('Discretionary spent',fmt(spent)+' of '+fmt(funded),spendPct+'%',spendPct>timePct+15?'neg-t':'pos-t');
   const rolled=rolledInTotal(p);
-  if(rolled)h+=row('Rolled over from last period','left in your envelopes at the end of '+periodName(p-1),fmt(rolled),'pos-t');
+  h+=row('Rolled over from last period',
+    p<=minPid()?'nothing before this period yet':('left in your envelopes at the end of '+periodName(p-1)),
+    fmt(rolled),rolled?'pos-t':'');
   if(overs.length)h+=row('⚠️ Over budget',overs.map(e=>esc(e.name)).join(', '),overs.length,'neg-t');
   const inc=extraIncomeFor(p);
   if(inc)h+=row('Extra income logged','added to this period',fmt(inc),'pos-t');
@@ -1616,6 +1619,9 @@ function renderEnvViewMonth(){
   const sp2=$('#envSpare');sp2.textContent=sl.valueTxt;sp2.className=sl.cls;
   $('#fillLbl').textContent=ltf>0?('Fill envelopes — '+fmt(ltf)+' to go'):'This pay period fully funded ✓';
   $('#fixRollBtn').style.display=hasRollIssues()?'block':'none';
+  const nh=namedHalfEnvs();
+  $('#fixHalfBtn').style.display=nh.length?'block':'none';
+  $('#fixHalfLbl').textContent='Fund '+nh.length+' "— 1st/15th" envelope'+(nh.length===1?'':'s')+' in full on their own payday';
   const swT=sweepTotalAvail(curP());
   $('#sweepBtn').style.display=swT>0?'block':'none';
   $('#sweepLbl').textContent='Sweep extra money — '+fmt(swT)+' sitting spare';
@@ -2540,6 +2546,23 @@ function doSweep(){const p=curP();
   if(dest!=='_assign')row[dest]=(row[dest]||0)+total;
   put('budgets/'+p,row);
   toast('Moved '+fmt(total)+' into '+destName)}
+function namedHalfEnvs(){ // "Name — 15th" but still splitting across both paydays
+  return envs().filter(e=>{
+    if(e.fundFrom==='1st'||e.fundFrom==='15th')return false;
+    const m=(e.name||'').match(/[—-]\s*(1st|15th)\s*$/i);
+    return !!m})}
+function hasSplitNameIssues(){return namedHalfEnvs().length>0}
+function fixSplitNameFunding(){
+  const list=namedHalfEnvs();
+  if(!list.length){toast('Nothing to fix');return}
+  const lines=list.map(e=>{const half=/15th\s*$/i.test(e.name)?'15th':'1st';
+    return '• '+e.name+' → funds in full on the '+half+' ('+fmt(monthlyOf(e))+')'}).join('\n');
+  if(!confirm('These envelopes are named for one payday but are still splitting in half across both.\n\n'+lines+
+    '\n\nSet each to fund its full amount on the payday it is named for?'))return;
+  for(const e of list){const half=/15th\s*$/i.test(e.name)?'15th':'1st';
+    setPath(data,'env/'+e.id+'/fundFrom',half)}
+  cache();if(rootRef)rootRef.child('env').set(data.env).catch(()=>{});
+  renderAll();toast('Fixed '+list.length+' envelope'+(list.length===1?'':'s'))}
 function hasRollIssues(){return envs().some(e=>!e.roll)}
 function fixRollSettings(){
   const bad=envs().filter(e=>envDueDay(e)&&!e.roll);
