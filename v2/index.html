@@ -744,7 +744,12 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <div class="kv"><span>Funded this period</span><b id="fundAlloc"></b></div>
       <div class="kv" id="fundAddRow" style="display:none"><span>Added into it</span><b id="fundAdd"></b></div>
       <div class="kv"><span>Spent this period</span><b id="fundSpent"></b></div>
-      <div class="kv"><span>Available now</span><b id="fundAvail"></b></div>
+      <div class="kv"><span>Available now</span><button class="editval" onclick="editFundAvail()"><b id="fundAvail"></b> ✎</button></div>
+    </div>
+    <div class="row" style="gap:8px;margin-bottom:12px;align-items:center">
+      <button class="btn ghost sm" onclick="fundStep(-1)">‹ Previous</button>
+      <span class="muted" id="fundWhen" style="flex:1;text-align:center;font-size:.72rem"></span>
+      <button class="btn ghost sm" onclick="fundStep(1)">Next ›</button>
     </div>
     <label class="f"><span>Assign for this period</span><input class="in mono" id="fundIn" inputmode="decimal"></label>
     <div class="muted" id="fundHint" style="margin:-6px 0 12px"></div>
@@ -1061,8 +1066,8 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       </div>
       <div class="card">
         <div class="eyebrow" style="margin-bottom:10px">Budget setup</div>
-        <label class="f"><span>Deposit on the 1st</span><input class="in mono" id="setInc1" inputmode="decimal" onchange="saveSettings()"></label>
-        <label class="f"><span>Deposit on the 15th</span><input class="in mono" id="setInc15" inputmode="decimal" onchange="saveSettings()"></label>
+        <label class="f"><span>Deposit on the 1st</span><input class="in mono" id="setInc1" inputmode="decimal" oninput="setIncPreview()" onchange="saveSettings()"></label>
+        <label class="f"><span>Deposit on the 15th</span><input class="in mono" id="setInc15" inputmode="decimal" oninput="setIncPreview()" onchange="saveSettings()"></label>
         <div class="kv" style="padding:8px 2px 0"><span class="muted">Monthly total</span><b class="mono" id="setIncTot"></b></div>
         <input type="hidden" id="setInc">
         <div class="grid2">
@@ -1086,12 +1091,20 @@ ol.help li,ul.help li{margin-bottom:9px;font-size:.9rem;line-height:1.45}
       <div class="card">
         <div class="eyebrow" style="margin-bottom:6px">Saved pay-period plans</div>
         <p class="muted" style="margin:0 0 12px;font-size:.78rem">Get every envelope exactly where you want it for a pay period, then save that layout here. From then on ⚡ Fill drops those exact amounts in — the 1st and the 15th can be different.</p>
-        <button class="btn sec sm" onclick="saveFillTemplate('1st')">💾 Save current as 1st-period plan</button>
-        <button class="btn sec sm" style="margin-left:8px" onclick="saveFillTemplate('15th')">💾 Save current as 15th-period plan</button>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn sec sm" style="width:100%" onclick="saveFillTemplate('1st')">💾 Save current as 1st-period plan</button>
+          <button class="btn sec sm" style="width:100%" onclick="saveFillTemplate('15th')">💾 Save current as 15th-period plan</button>
+        </div>
         <div class="muted" id="tplStatus" style="margin-top:12px;font-size:.75rem;line-height:1.6"></div>
-        <div class="row" style="margin-top:10px;gap:8px">
-          <button class="btn ghost sm" onclick="clearFillTemplate('1st')">Clear 1st plan</button>
-          <button class="btn ghost sm" onclick="clearFillTemplate('15th')">Clear 15th plan</button>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn ghost sm" style="flex:1" onclick="clearFillTemplate('1st')">Clear 1st plan</button>
+          <button class="btn ghost sm" style="flex:1" onclick="clearFillTemplate('15th')">Clear 15th plan</button>
+        </div>
+        <div class="eyebrow" style="margin:18px 0 6px">Start the envelopes over</div>
+        <p class="muted" style="margin:0 0 10px;font-size:.78rem">Sets every envelope back to $0 assigned so you can fill them again with different amounts. Your envelopes, their targets, every transaction and your saved plans all stay exactly as they are.</p>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost sm" style="flex:1" onclick="clearEnvelopes('period')">Clear this pay period</button>
+          <button class="btn danger sm" style="flex:1" onclick="clearEnvelopes('all')">Clear every envelope</button>
         </div>
       </div>
       <div class="card">
@@ -1277,6 +1290,19 @@ function clearFillTemplate(which){
   if(!data.settings?.[key])return toast('No '+which+'-period plan saved');
   if(!confirm('Clear your saved '+which+'-period plan? Fill will go back to using each envelope\'s target.'))return;
   put('settings/'+key,null);toast('Cleared')}
+function clearEnvelopes(scope){
+  const p=curP();
+  const anyHere=Object.keys(data.budgets?.[p]||{}).length;
+  const anyAll=Object.keys(data.budgets||{}).length;
+  if(scope==='period'&&!anyHere)return toast('Nothing is assigned in '+periodName(p)+' yet');
+  if(scope==='all'&&!anyAll)return toast('Nothing is assigned in any pay period yet');
+  const what=scope==='all'
+    ?'EVERY pay period — past, present and future'
+    :periodName(p)+' only';
+  if(!confirm('Clear every envelope back to $0 assigned?\n\nScope: '+what+'.\n\nKept: your envelopes and their amounts, every transaction, members, and your saved pay-period plans.\nCleared: the funding assignments, and any manual "left to fund" override.\n\nExport a backup from Settings first if you are not sure.'))return;
+  if(scope==='all'){put('budgets',null);if(!data.budgets)data.budgets={}}
+  else put('budgets/'+p,null);
+  toast(scope==='all'?'All envelopes cleared — fill them again from Budget':'Cleared '+periodName(p))}
 function tplSummary(which){
   const key=which==='1st'?'tpl1':'tpl15',t=data.settings?.[key];
   if(!t||!Object.keys(t).length)return which+': no plan saved — Fill uses each envelope\'s target.';
@@ -1351,7 +1377,9 @@ function envRowHTMLMonth(e,ps){const a=ps.reduce((s,p)=>s+envFunded(e.id,p),0),f
   const av=(e.roll||e.kind==='goal')?avail(e.id,ps[ps.length-1]):a-f;
   // paid if it was paid in EITHER half of the month, not just the last one
   const paidP=ps.find(p=>envPaidIn(e,p));
-  return envRowCard(e,a,f,av,monthlyOf(e),{p:paidP!=null?paidP:ps[ps.length-1]})}
+  // open the period you're standing in, not whichever one happens to be last in the month
+  const openP=paidP!=null?paidP:(ps.includes(curP())?curP():ps[0]);
+  return envRowCard(e,a,f,av,monthlyOf(e),{p:openP})}
 function envRowRaw(e,p){return envRowCard(e,envFunded(e.id,p),envSpend(e.id,p),avail(e.id,p),monthlyOf(e),{p})}
 function envRowSplit(e,p){return envRowCard(e,envFunded(e.id,p),envSpend(e.id,p),avail(e.id,p),periodTarget(e,p),{p})}
 
@@ -2602,14 +2630,19 @@ function openFund(id,forceP){fundId=id;
   else p=curP();
   fundP=p;
   const e=data.env[id];if(!e)return;
+  const cp=curP();
+  const when=p===cp?'this pay period — the one you are in now':
+    p===cp+1?'NEXT pay period — money does not go in until '+pStart(p).toLocaleDateString('en-US',{month:'short',day:'numeric'}):
+    p<cp?'a PAST pay period':'a future pay period';
   $('#fundTitle').textContent=(e.kind==='goal'?'🎯 ':'✉️ ')+e.name+' · '+pLabel(p);
+  $('#fundWhen').innerHTML=(p===cp?'':'⚠️ ')+periodName(p)+'<br>'+when;
   const addIn=envAdd(id,p);
   $('#fundAlloc').textContent=fmt(envFunded(id,p));
   $('#fundAddRow').style.display=addIn?'flex':'none';
   $('#fundAdd').textContent='+'+fmt(addIn)+(alloc(id,p)?(' (assigned '+fmt(alloc(id,p))+')'):'');
   $('#fundSpent').textContent=fmt(envSpend(id,p));
   const av=avail(id,p);const fa=$('#fundAvail');fa.textContent=fmt(av);fa.className=av<0?'neg-t':'pos-t';
-  $('#fundIn').value=alloc(id,p)?(alloc(id,p)/100):'';
+  $('#fundIn').value=(alloc(id,p)/100).toFixed(2); // always show the real number so it is obviously editable
   const wk=weeksPerPeriod(),f=payPerMonth(),a=alloc(id,p);
   $('#fundHint').innerHTML=((a?('≈ <b class="mono">'+fmt0(a/wk)+'</b>/week · <b class="mono">'+fmt0(a*f)+'</b>/month'):'')+
     ((()=>{const pt=periodTarget(e,p);return pt?((a?' · ':'')+'target '+fmt(pt)+'/paycheck'):''})()))||'';
@@ -2624,6 +2657,18 @@ function openFund(id,forceP){fundId=id;
   $('#fundTx').innerHTML=txList().filter(t=>t.env===id||t.from===id||t.to===id).slice(0,20).map(t=>txRow(t)).join('')||'<div class="empty">No transactions yet.</div>';
   openSheet('shFund')}
 function saveFund(){put('budgets/'+fundP+'/'+fundId,toC($('#fundIn').value));closeSheet('shFund');toast('Assignment updated')}
+function fundStep(d){if(fundId==null)return;openFund(fundId,fundP+d)}
+function editFundAvail(){ // set the balance directly; the assignment is worked out backwards
+  if(fundId==null)return;
+  const cur=avail(fundId,fundP),a=alloc(fundId,fundP);
+  const v=prompt('Set this envelope\'s balance for '+periodName(fundP)+'\n\nIt holds '+fmt(cur)+' right now. Type what it should hold instead — the assignment for this period is adjusted to match.',(cur/100).toFixed(2));
+  if(v===null)return;
+  const want=toC(v);
+  const base=cur-a;                    // everything that is not this period's assignment
+  const newAlloc=want-base;
+  if(newAlloc<0&&!confirm('That leaves a negative assignment of '+fmt(newAlloc)+' for this period, because '+fmt(base)+' is already carried in or added. Do it anyway?'))return;
+  put('budgets/'+fundP+'/'+fundId,newAlloc);
+  openFund(fundId,fundP);toast('Balance set to '+fmt(want))}
 function editEnvFromFund(){openEnvForm(fundId)}
 function copyPrevBudget(){const p=curP()+viewP;const prev=data.budgets?.[p-1];
   if(!prev)return toast('No previous period to copy');
@@ -2699,13 +2744,16 @@ function deleteMember(id){const m=data.members[id];if(!m)return;
   if(Object.keys(data.members).length<=1)return toast('Can\'t remove the only member');
   if(!confirm('Remove "'+m.name+'" from the household?\n\nTheir logged transactions stay in the history. If this is a duplicate of you, make sure the one marked "(you)" is the one you keep.'))return;
   put('members/'+id,null);toast(m.name+' removed')}
+function setIncPreview(){ // keep the monthly total honest as he types, before any save fires
+  const el=$('#setIncTot');if(!el)return;
+  el.textContent=fmt(toC($('#setInc1').value)+toC($('#setInc15').value))}
 function saveSettings(){
+  // read everything first, then write ONCE. Four separate put()s each re-rendered the panel
+  // mid-save and repainted the other inputs from half-updated data.
   const i1=toC($('#setInc1').value),i15=toC($('#setInc15').value),
         fv=$('#setFreq').value,anch=$('#setAnchor').value||today();
-  put('settings/income1',i1);put('settings/income15',i15);
-  put('settings/income',i1||i15);
-  put('settings/freq',fv==='semi'?'semi':(+fv||14));
-  put('settings/anchor',anch);
+  put('settings',{...data.settings,income1:i1,income15:i15,income:i1||i15,
+    freq:fv==='semi'?'semi':(+fv||14),anchor:anch});
   $('#setAnchorWrap').style.display=fv==='semi'?'none':'block';toast('Saved')}
 function addMember(){const n=$('#newMember').value.trim();if(!n)return;
   put('members/'+uid(),{name:n});$('#newMember').value='';toast(n+' added')}
