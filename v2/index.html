@@ -35,17 +35,16 @@
   box-sizing:border-box;
 }
 *,*::before,*::after{box-sizing:inherit}
-/* The page itself never scrolls. Only #scr does, and the bottom bar sits under it as a
-   normal block, not position:fixed. iOS kept losing track of a fixed bar whenever the page
-   changed height (opening a card, flipping a switch), and floated it up into the content.
-   A bar that is not fixed has nothing to lose track of. */
-html{-webkit-text-size-adjust:100%;background:#102019;height:100%;overflow:hidden;overscroll-behavior:none}
+/* The page itself never scrolls. #scr fills the whole screen and does the scrolling, and
+   the bar is pinned over it. iOS only floats a pinned bar when the page underneath scrolls
+   and changes height, and this page never does. Edge to edge, so content still slides
+   under the glass bar. No height:100% anywhere: on iPhone that stops short of the bottom. */
+html{-webkit-text-size-adjust:100%;overflow:hidden;overscroll-behavior:none}
 body{margin:0;color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;
-  height:100%;overflow:hidden;display:flex;flex-direction:column;
+  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden;
   background:
     radial-gradient(130% 62% at 86% -4%,rgba(201,169,97,.22) 0%,rgba(201,169,97,0) 56%),
-    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%);
+    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%) #102019;
   background-attachment:fixed}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 13px;color:var(--ink)}
@@ -59,15 +58,21 @@ select{-webkit-appearance:none;appearance:none;
 p{margin:0}
 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
 .serif{font-family:'Roboto Slab',Georgia,serif;font-weight:500;letter-spacing:-.01em}
-#scr{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
-  overscroll-behavior-y:contain;position:relative}
+#scr{position:fixed;top:0;left:0;right:0;bottom:0;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+/* The gradient is stretched over the whole page and scrolls with it, the way it did when
+   the page itself scrolled. So the glass bar shows mid green, not the dark end of the
+   gradient pinned to the bottom of the screen. */
+#pg{min-height:100%;background:
+    radial-gradient(130% 62% at 86% -4%,rgba(201,169,97,.22) 0%,rgba(201,169,97,0) 56%),
+    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%) #102019}
 .wrap{max-width:520px;margin:0 auto}
 .hdr{background:transparent;border-bottom:1px solid var(--hair);color:var(--cream);
   padding:calc(16px + env(safe-area-inset-top,0px)) 16px 16px}
 .hdr .t{font-family:'Roboto Slab',Georgia,serif;font-weight:500;font-size:25px;letter-spacing:-.01em}
 .hdr .s{font-size:12px;color:var(--mut)}
 .hdr .eyebrow{font-size:11px;letter-spacing:.14em;color:var(--mut);margin-bottom:10px}
-.body{padding:12px 12px 44px}
+.body{padding:12px 12px 110px}
 /* glass only on top-level containers, where there is a gradient worth blurring */
 .card{background:var(--card);border:1px solid var(--gline);border-radius:16px;box-shadow:var(--shadow);
   -webkit-backdrop-filter:var(--glass);backdrop-filter:var(--glass)}
@@ -252,7 +257,10 @@ p{margin:0}
   bottom:calc(84px + env(safe-area-inset-bottom,0px));display:none;align-items:center;gap:8px;
   background:#0C1A15;color:#F3F1E8;border-radius:12px;padding:11px 13px;font-size:13px;z-index:60}
 #undo button{border:0;background:transparent;color:#C9A961;font-weight:500;font-size:13px;padding:4px 8px}
-#nav{position:relative;flex:none;background:rgba(14,28,23,.92);display:flex;z-index:50;
+/* Warm glass. The old bar picked up a soft gold glow low down from the page behind it;
+   that glow is painted into the bar itself now, so it looks the same on every screen. */
+#nav{position:fixed;left:0;right:0;bottom:0;display:flex;z-index:50;
+  background:radial-gradient(95% 58px at 50% 64%,rgba(230,168,70,.15),rgba(230,168,70,0)),rgba(18,31,24,.9);
   -webkit-backdrop-filter:saturate(140%) blur(20px);backdrop-filter:saturate(140%) blur(20px);
   border-top:1px solid rgba(255,255,255,.09);
   padding:10px 6px calc(12px + env(safe-area-inset-bottom,0px));
@@ -269,7 +277,7 @@ p{margin:0}
 </style>
 </head>
 <body>
-<div id="scr"><div class="wrap"><div id="app"></div></div></div>
+<div id="scr"><div id="pg"><div class="wrap"><div id="app"></div></div></div></div>
 <div id="undo" role="status"></div>
 <nav id="nav" aria-label="Main"></nav>
 <script>
