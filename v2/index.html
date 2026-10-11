@@ -35,11 +35,14 @@
   box-sizing:border-box;
 }
 *,*::before,*::after{box-sizing:inherit}
-/* No overflow or padding on html/body: either one makes position:fixed scroll with
-   the page on iOS, which is what made the bottom bar drift upward. */
-html{-webkit-text-size-adjust:100%;background:#102019}
+/* The page itself never scrolls. Only #scr does, and the bottom bar sits under it as a
+   normal block, not position:fixed. iOS kept losing track of a fixed bar whenever the page
+   changed height (opening a card, flipping a switch), and floated it up into the content.
+   A bar that is not fixed has nothing to lose track of. */
+html{-webkit-text-size-adjust:100%;background:#102019;height:100%;overflow:hidden;overscroll-behavior:none}
 body{margin:0;color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100dvh;
+  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  height:100%;overflow:hidden;display:flex;flex-direction:column;
   background:
     radial-gradient(130% 62% at 86% -4%,rgba(201,169,97,.22) 0%,rgba(201,169,97,0) 56%),
     linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%);
@@ -56,13 +59,15 @@ select{-webkit-appearance:none;appearance:none;
 p{margin:0}
 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
 .serif{font-family:'Roboto Slab',Georgia,serif;font-weight:500;letter-spacing:-.01em}
-.wrap{max-width:520px;margin:0 auto;overflow-x:clip;min-height:100dvh}
+#scr{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;position:relative}
+.wrap{max-width:520px;margin:0 auto}
 .hdr{background:transparent;border-bottom:1px solid var(--hair);color:var(--cream);
   padding:calc(16px + env(safe-area-inset-top,0px)) 16px 16px}
 .hdr .t{font-family:'Roboto Slab',Georgia,serif;font-weight:500;font-size:25px;letter-spacing:-.01em}
 .hdr .s{font-size:12px;color:var(--mut)}
 .hdr .eyebrow{font-size:11px;letter-spacing:.14em;color:var(--mut);margin-bottom:10px}
-.body{padding:12px 12px 110px}
+.body{padding:12px 12px 44px}
 /* glass only on top-level containers, where there is a gradient worth blurring */
 .card{background:var(--card);border:1px solid var(--gline);border-radius:16px;box-shadow:var(--shadow);
   -webkit-backdrop-filter:var(--glass);backdrop-filter:var(--glass)}
@@ -247,7 +252,7 @@ p{margin:0}
   bottom:calc(84px + env(safe-area-inset-bottom,0px));display:none;align-items:center;gap:8px;
   background:#0C1A15;color:#F3F1E8;border-radius:12px;padding:11px 13px;font-size:13px;z-index:60}
 #undo button{border:0;background:transparent;color:#C9A961;font-weight:500;font-size:13px;padding:4px 8px}
-#nav{position:fixed;left:0;right:0;bottom:0;background:rgba(14,28,23,.82);display:flex;z-index:50;
+#nav{position:relative;flex:none;background:rgba(14,28,23,.92);display:flex;z-index:50;
   -webkit-backdrop-filter:saturate(140%) blur(20px);backdrop-filter:saturate(140%) blur(20px);
   border-top:1px solid rgba(255,255,255,.09);
   padding:10px 6px calc(12px + env(safe-area-inset-bottom,0px));
@@ -264,7 +269,7 @@ p{margin:0}
 </style>
 </head>
 <body>
-<div class="wrap"><div id="app"></div></div>
+<div id="scr"><div class="wrap"><div id="app"></div></div></div>
 <div id="undo" role="status"></div>
 <nav id="nav" aria-label="Main"></nav>
 <script>
@@ -1744,7 +1749,7 @@ function moreRow(gr,it){
    '<div class="fg"><div style="display:flex;align-items:center;gap:12px;padding:12px 14px">'+
     '<span class="sqr" style="width:30px;height:30px;border-radius:9px;background:var(--mutbg);font-size:16px">'+it.ic+'</span>'+
     '<span style="flex:1;font-size:15px">'+esc(it.n)+'</span><span class="muted">\u203A</span></div></div>';
-  var api=swipe(w,{right:130,tap:function(){moreOpen=it.n;window.scrollTo(0,0);render()}});
+  var api=swipe(w,{right:130,tap:function(){moreOpen=it.n;toTop();render()}});
   $('[data-a="Edit"]',w).onclick=function(){api.close();editing=it.id;paintGroups()};
   $('[data-a="Delete"]',w).onclick=function(){
     var copy=JSON.parse(JSON.stringify(data.more)),idx=gr.items.indexOf(it);
@@ -1769,7 +1774,7 @@ function screenMoreSub(){
   $('#bk').onclick=function(){
     if(kidEdit!==null){kidEdit=null;return render()}
     if(vEdit!==null){vEdit=null;return render()}
-    moreOpen=null;window.scrollTo(0,0);render()};
+    moreOpen=null;toTop();render()};
   if(t==='Yearly expenses'||t==='Goals')wireGoals();
   if(t==='Transition runway')wireTr();
   if(t==='Debts')wireList('debts');
@@ -2183,7 +2188,8 @@ function wireExp(){
 /* ========== nav / render ========== */
 var tab='home',sub=null;
 var TABS=[['home','\u{1F3E0}','Home'],['budget','\u2709\uFE0F','Budget'],['add','+',''],['cal','\u{1F4C5}','Calendar'],['more','\u2630','More']];
-function go(t){tab=t;sub=null;if(t!=='more')moreOpen=null;kidEdit=null;vEdit=null;window.scrollTo(0,0);render()}
+function toTop(){var s=document.querySelector('#scr');if(s)s.scrollTop=0}
+function go(t){tab=t;sub=null;if(t!=='more')moreOpen=null;kidEdit=null;vEdit=null;toTop();render()}
 function paintNav(){
   var n=$('#nav');n.innerHTML='';
   TABS.forEach(function(t){
