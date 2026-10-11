@@ -35,16 +35,14 @@
   box-sizing:border-box;
 }
 *,*::before,*::after{box-sizing:inherit}
-/* The page itself never scrolls. #scr fills the whole screen and does the scrolling, and
-   the bar is pinned over it. iOS only floats a pinned bar when the page underneath scrolls
-   and changes height, and this page never does. Edge to edge, so content still slides
-   under the glass bar. No height:100% anywhere: on iPhone that stops short of the bottom. */
-html{-webkit-text-size-adjust:100%;overflow:hidden;overscroll-behavior:none}
+/* No overflow or padding on html/body: either one makes position:fixed scroll with
+   the page on iOS, which is what made the bottom bar drift upward. */
+html{-webkit-text-size-adjust:100%;background:#102019}
 body{margin:0;color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden;
+  font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100dvh;
   background:
     radial-gradient(130% 62% at 86% -4%,rgba(201,169,97,.22) 0%,rgba(201,169,97,0) 56%),
-    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%) #102019;
+    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%);
   background-attachment:fixed}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 13px;color:var(--ink)}
@@ -58,15 +56,7 @@ select{-webkit-appearance:none;appearance:none;
 p{margin:0}
 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
 .serif{font-family:'Roboto Slab',Georgia,serif;font-weight:500;letter-spacing:-.01em}
-#scr{position:fixed;top:0;left:0;right:0;bottom:calc(-1 * var(--vgap,0px));overflow-y:auto;overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
-/* The gradient is stretched over the whole page and scrolls with it, the way it did when
-   the page itself scrolled. So the glass bar shows mid green, not the dark end of the
-   gradient pinned to the bottom of the screen. */
-#pg{min-height:100%;background:
-    radial-gradient(130% 62% at 86% -4%,rgba(201,169,97,.22) 0%,rgba(201,169,97,0) 56%),
-    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%) #102019}
-.wrap{max-width:520px;margin:0 auto}
+.wrap{max-width:520px;margin:0 auto;overflow-x:clip;min-height:100dvh}
 .hdr{background:transparent;border-bottom:1px solid var(--hair);color:var(--cream);
   padding:calc(16px + env(safe-area-inset-top,0px)) 16px 16px}
 .hdr .t{font-family:'Roboto Slab',Georgia,serif;font-weight:500;font-size:25px;letter-spacing:-.01em}
@@ -254,12 +244,12 @@ p{margin:0}
 .txr .nm{display:block;font-size:14px}
 .txr .s2{display:block;font-size:11.5px;color:var(--mut);margin-top:2px}
 #undo{position:fixed;left:50%;transform:translateX(-50%);width:min(496px,calc(100% - 24px));border:1px solid rgba(255,255,255,.12);
-  bottom:calc(84px + env(safe-area-inset-bottom,0px) - var(--vgap,0px));display:none;align-items:center;gap:8px;
+  bottom:calc(84px + env(safe-area-inset-bottom,0px));display:none;align-items:center;gap:8px;
   background:#0C1A15;color:#F3F1E8;border-radius:12px;padding:11px 13px;font-size:13px;z-index:60}
 #undo button{border:0;background:transparent;color:#C9A961;font-weight:500;font-size:13px;padding:4px 8px}
-/* Warm glass. The old bar picked up a soft gold glow low down from the page behind it;
-   that glow is painted into the bar itself now, so it looks the same on every screen. */
-#nav{position:fixed;left:0;right:0;bottom:calc(-1 * var(--vgap,0px));display:flex;z-index:50;
+/* Warm glass. The soft gold glow low in the bar is painted into the bar itself, so it looks
+   the same in the app, in Safari and in a preview, whatever is behind it. */
+#nav{position:fixed;left:0;right:0;bottom:0;display:flex;z-index:50;
   background:radial-gradient(95% 58px at 50% 64%,rgba(230,168,70,.15),rgba(230,168,70,0)),rgba(18,31,24,.9);
   -webkit-backdrop-filter:saturate(140%) blur(20px);backdrop-filter:saturate(140%) blur(20px);
   border-top:1px solid rgba(255,255,255,.09);
@@ -277,7 +267,7 @@ p{margin:0}
 </style>
 </head>
 <body>
-<div id="scr"><div id="pg"><div class="wrap"><div id="app"></div></div></div></div>
+<div class="wrap"><div id="app"></div></div>
 <div id="undo" role="status"></div>
 <nav id="nav" aria-label="Main"></nav>
 <script>
@@ -1757,7 +1747,7 @@ function moreRow(gr,it){
    '<div class="fg"><div style="display:flex;align-items:center;gap:12px;padding:12px 14px">'+
     '<span class="sqr" style="width:30px;height:30px;border-radius:9px;background:var(--mutbg);font-size:16px">'+it.ic+'</span>'+
     '<span style="flex:1;font-size:15px">'+esc(it.n)+'</span><span class="muted">\u203A</span></div></div>';
-  var api=swipe(w,{right:130,tap:function(){moreOpen=it.n;toTop();render()}});
+  var api=swipe(w,{right:130,tap:function(){moreOpen=it.n;window.scrollTo(0,0);render()}});
   $('[data-a="Edit"]',w).onclick=function(){api.close();editing=it.id;paintGroups()};
   $('[data-a="Delete"]',w).onclick=function(){
     var copy=JSON.parse(JSON.stringify(data.more)),idx=gr.items.indexOf(it);
@@ -1782,7 +1772,7 @@ function screenMoreSub(){
   $('#bk').onclick=function(){
     if(kidEdit!==null){kidEdit=null;return render()}
     if(vEdit!==null){vEdit=null;return render()}
-    moreOpen=null;toTop();render()};
+    moreOpen=null;window.scrollTo(0,0);render()};
   if(t==='Yearly expenses'||t==='Goals')wireGoals();
   if(t==='Transition runway')wireTr();
   if(t==='Debts')wireList('debts');
@@ -2196,8 +2186,7 @@ function wireExp(){
 /* ========== nav / render ========== */
 var tab='home',sub=null;
 var TABS=[['home','\u{1F3E0}','Home'],['budget','\u2709\uFE0F','Budget'],['add','+',''],['cal','\u{1F4C5}','Calendar'],['more','\u2630','More']];
-function toTop(){var s=document.querySelector('#scr');if(s)s.scrollTop=0}
-function go(t){tab=t;sub=null;if(t!=='more')moreOpen=null;kidEdit=null;vEdit=null;toTop();render()}
+function go(t){tab=t;sub=null;if(t!=='more')moreOpen=null;kidEdit=null;vEdit=null;window.scrollTo(0,0);render()}
 function paintNav(){
   var n=$('#nav');n.innerHTML='';
   TABS.forEach(function(t){
@@ -2226,16 +2215,17 @@ function boot(){
   render();
   if(!cfg.code)setTimeout(function(){toast('More \u2192 Settings to set your household code and deposits')},600)}
 window.addEventListener('visibilitychange',function(){if(!document.hidden)render()});
-/* iPhone home-screen apps with the see-through status bar report a screen that stops short
-   of the bottom by the height of the status bar area, so anything pinned to the bottom sits
-   that far up. Measure the shortfall and pin the bar and the page past it, to the real edge. */
-function fixGap(){var g=0;
-  try{var sa=window.navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
-    if(sa&&innerHeight>innerWidth){var d=Math.round(screen.height-innerHeight);if(d>0&&d<=80)g=d}
-    document.documentElement.style.setProperty('--vgap',g+'px')}catch(e){}}
-fixGap();
-try{window.addEventListener('resize',fixGap);window.addEventListener('orientationchange',function(){setTimeout(fixGap,300)});
-  setTimeout(fixGap,400)}catch(e){}
+/* iOS can lose track of the pinned bottom bar when the page changes height under it (a card
+   opening, the Catching up switch showing its dates) and leave it floating mid-page. Whenever
+   the page height changes, take the bar out and put it straight back, which makes iOS place it
+   against the bottom edge again. Same frame, so nothing flickers. */
+var navH=0;
+function reseatNav(){try{var n=document.getElementById('nav');if(!n)return;
+  n.style.display='none';void n.offsetHeight;n.style.display=''}catch(e){}}
+function watchH(){try{var h=document.documentElement.scrollHeight;
+  if(h!==navH){navH=h;requestAnimationFrame(reseatNav)}}catch(e){}}
+try{if(window.ResizeObserver)new ResizeObserver(watchH).observe(document.getElementById('app'));
+  window.addEventListener('resize',function(){requestAnimationFrame(reseatNav)})}catch(e){}
 boot();
 </script>
 </body>
