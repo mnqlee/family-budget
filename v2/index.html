@@ -72,7 +72,7 @@ p{margin:0}
   .card,.tile,.incs,.deep{background:var(--panel)}
 }
 .sec{font-size:11px;letter-spacing:.1em;color:var(--mut);margin:16px 0 7px 4px;text-transform:uppercase}
-.hsec{display:flex;align-items:baseline;gap:9px;margin:11px 2px 7px;
+.hsec{display:flex;align-items:baseline;gap:9px;margin:9px 2px 6px;
   font-family:'Roboto Slab',Georgia,serif;font-weight:500;font-size:13.5px;letter-spacing:-.01em;color:var(--ink)}
 .hsec b{font-family:Inter,sans-serif;font-weight:400;font-size:11px;color:var(--mut)}
 .hsec::after{content:"";flex:1;height:1px;border-radius:1px;
@@ -188,6 +188,20 @@ p{margin:0}
 .tag{font-size:10.5px;letter-spacing:.03em;background:var(--gold);color:#16261F;border-radius:7px;
   padding:2px 8px;white-space:nowrap;font-weight:500}
 .tag.over{background:var(--badbg);color:var(--red)}
+/* catching up: a negative you planned. Amber, not red (a problem) and not gold (done). */
+:root{--amber:#E0A866}
+.tag.cu{background:transparent;color:var(--amber);border:1px solid rgba(224,168,102,.6);padding:1px 7px}
+.erow.cu{border-left-color:var(--amber);
+  background:linear-gradient(90deg,rgba(224,168,102,.15) 0%,rgba(224,168,102,.05) 55%,rgba(224,168,102,0) 100%),var(--panel)}
+.erow.cu .mtr{background:rgba(224,168,102,.16)}
+.erow.cu .mtr i{background:repeating-linear-gradient(135deg,#E0A866 0 6px,rgba(224,168,102,.55) 6px 12px)!important}
+.cusw{flex:none;width:44px;height:26px;border-radius:13px;border:0;padding:0;position:relative;background:rgba(255,255,255,.16);transition:background .2s}
+.cusw::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#F3F1E8;transition:transform .2s}
+.cusw.on{background:var(--amber)}
+.cusw.on::after{transform:translateX(18px);background:#1C332B}
+.cutl{display:grid;grid-template-columns:58px 1fr auto;gap:8px;align-items:center;font-size:12px;padding:4px 0}
+.cutl .bar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
+.cutl .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
 #ribw{position:relative;margin:0 -12px}
 #ribw::after{content:"";position:absolute;right:0;top:0;bottom:9px;width:26px;pointer-events:none;
   background:linear-gradient(90deg,rgba(233,236,230,0),var(--paper))}
@@ -412,8 +426,30 @@ function allocTotal(p){var s=0;envs().forEach(function(e){s+=alloc(e.id,p)});ret
 function spendPool(p){var s=0;spendEnvs().forEach(function(e){s+=Math.max(0,bal(e.id,p))});return s}
 /* Overspending is real money already out of the bank, taken from envelopes that
    still show a balance. So it comes off the top until you cover it. */
-function safeToSpend(p){return Math.max(0,spendPool(p)-overspent(p))}
-function overspentList(p){return envs().filter(function(e){return !isBuf(e)&&!paidIn(e,p)&&bal(e.id,p)<0})
+function safeToSpend(p){return Math.max(0,spendPool(p)-overspent(p)-catchingUp(p))}
+/* Catching up: an envelope you let run negative on purpose (Gifts before a birthday and
+   Christmas). The money is still gone, so Safe to spend still takes it off. It just stops
+   being called overspent, stays out of the cover sheet, and shows when it will be back at zero. */
+function isCU(e){return !!e&&!!e.catchup&&!isBuf(e)}
+function cuList(p){return envs().filter(function(e){return isCU(e)&&!paidIn(e,p)&&bal(e.id,p)<0})
+  .sort(function(a,b){return bal(a.id,p)-bal(b.id,p)})}
+function catchingUp(p){var s=0;cuList(p).forEach(function(e){s-=bal(e.id,p)});return s}
+/* Walk its future funding forward until it is back to zero. Spending you have not made yet
+   is not guessed at, so new spending moves the date out. */
+function payback(e,p){
+  var b=bal(e.id,p),steps=[{p:p,b:b,now:true}];
+  if(b>=0)return {p:p,steps:steps,per:0};
+  b+=Math.max(0,target(e,p)-alloc(e.id,p));       // what this period still owes it
+  var per=0;
+  for(var q=p+1;q<=p+48;q++){var add=target(e,q);per=Math.max(per,add);b+=add;
+    steps.push({p:q,b:b});if(b>=0)return {p:q,steps:steps,per:per}}
+  return {p:null,steps:steps,per:per}}
+function deepest(e,p){var lo=minPid(),d=bal(e.id,p);
+  for(var q=p-1;q>=lo;q--){var v=bal(e.id,q);if(v>=0)break;d=Math.min(d,v)}return d}
+function cuWhen(e,p){var r=payback(e,p);
+  if(r.p===null)return r.per?'more than two years to catch up':'no funding set, it will not catch up';
+  return '$0 by '+pShort(r.p)}
+function overspentList(p){return envs().filter(function(e){return !isBuf(e)&&!isCU(e)&&!paidIn(e,p)&&bal(e.id,p)<0})
   .sort(function(a,b){return bal(a.id,p)-bal(b.id,p)})}
 /* ---- what the buffer could be spread across, in the order you chose ---- */
 function byPri(p){return function(a,b){
@@ -427,8 +463,10 @@ function shortList(p){return envs().filter(function(e){
 function gapOf(e,p){var b=bal(e.id,p);
   return b<0?-b:Math.max(0,target(e,p)-alloc(e.id,p))}
 function overspent(p){var s=0;overspentList(p).forEach(function(e){s-=bal(e.id,p)});return s}
-function inEnvelopes(p){var s=0;envs().forEach(function(e){var b=bal(e.id,p);
-  s+=data.settings.posOnly===false?b:Math.max(0,b)});return s}
+/* What is really sitting in the envelopes: everything they hold, less what the
+   overspent ones already took. Same rule Safe to spend uses, so the two always agree. */
+function heldTotal(p){var s=0;envs().forEach(function(e){s+=Math.max(0,bal(e.id,p))});return s}
+function inEnvelopes(p){return heldTotal(p)-overspent(p)-catchingUp(p)}
 function dueOn(day,y,mo){var s=0;bills().forEach(function(e){if(e.dueDay===day)s+=monthly(e)});return s}
 function billsOn(day){return bills().filter(function(e){return e.dueDay===day})}
 /* ========== undo ========== */
@@ -533,24 +571,26 @@ function envRow(e,p,p2){
       '<span class="mtr"><i style="width:'+(bv>0?100:0)+'%;background:var(--green);color:var(--green)"></i></span></button>'}
   var paid=!!e.dueDay&&(paidIn(e,p)||(p2!=null&&paidIn(e,p2)));
   var b=bal(e.id,last),tg=paid?monthly(e):(target(e,p)+(p2!=null?target(e,p2):0));
-  var shown=paid?0:b,over=!paid&&b<0;
+  var cu=!paid&&b<0&&isCU(e),shown=paid?0:b,over=!paid&&b<0&&!cu;
   var pct=paid?100:(tg?Math.max(0,Math.min(100,b/tg*100)):(b>0?100:0));
   var col=paid?'var(--gold)':over?'var(--redf)':(pct<25?'var(--brass)':'var(--green)');
-  var ri=paid?0:rolledIn(e.id,p),put0=fundedIn(e.id,p)+(p2!=null?fundedIn(e.id,p2):0);
+  if(cu){var dp=deepest(e,last);pct=dp<0?Math.max(4,Math.round((1-b/dp)*100)):4}  // fills as it climbs back
+  var ri=(paid||cu)?0:rolledIn(e.id,p),put0=fundedIn(e.id,p)+(p2!=null?fundedIn(e.id,p2):0);
   var due=e.dueDay?' \u00B7 due the '+ord(e.dueDay):'';
   var sub;
   if(paid)sub='paid in full'+due;
   else if(e.kind==='goal')sub=Math.round(e.target?b/e.target*100:0)+'% of '+m0(e.target||0)+' target';
+  else if(cu){var pb=payback(e,last);sub=(pb.per?'+'+m0(pb.per)+' each payday \u00B7 ':'')+cuWhen(e,last)}
   else if(over)sub='spent '+m(-b)+' more than it held';
   else if(ri>0)sub='put in '+m(put0)+' this period'+due;
   else sub='funded '+m(put0)+' of '+m(tg)+due;
-  return '<button class="erow'+(paid?' paid':'')+'" data-env="'+e.id+'" data-p="'+last+'">'+
+  return '<button class="erow'+(paid?' paid':cu?' cu':'')+'" data-env="'+e.id+'" data-p="'+last+'">'+
     '<span class="top"><span style="min-width:0">'+
       '<span class="nm">'+esc(e.name)+
-        (paid?'<span class="tag">PAID \u2713</span>':over?'<span class="tag over">OVER</span>':'')+'</span>'+
+        (paid?'<span class="tag">PAID \u2713</span>':cu?'<span class="tag cu">CATCHING UP</span>':over?'<span class="tag over">OVER</span>':'')+'</span>'+
       '<span class="s2" style="color:'+(over?'var(--red)':paid?'rgba(230,213,168,.85)':'var(--mut)')+'">'+sub+'</span></span>'+
-    '<span class="amt" style="color:'+(paid?'var(--champ)':over?'var(--red)':'var(--ink)')+'">'+m(shown)+
-      '<small>of '+m(tg)+'</small></span></span>'+
+    '<span class="amt" style="color:'+(paid?'var(--champ)':cu?'var(--amber)':over?'var(--red)':'var(--ink)')+'">'+m(shown)+
+      '<small>'+(cu?'planned':'of '+m(tg))+'</small></span></span>'+
     '<span class="mtr"><i style="width:'+pct+'%;background:'+col+';color:'+col+'"></i></span>'+
     (ri>0?'<span class="roll"><i>\u21BA</i><span>includes <b>'+m(ri)+'</b> rolled over from '+
       pShort(p-1)+' pay period</span></span>':'')+'</button>'}
@@ -722,18 +762,28 @@ function paintHero(p){
   var ok=spendEnvs().filter(function(e){return bal(e.id,p)>=0});
   var f=0,sp=0;ok.forEach(function(e){f+=fundedIn(e.id,p);sp+=spentIn(e.id,p)});
   var pct=f?Math.round(sp/f*100):0,pace=100-paceLeft(p);
-  var pool=spendPool(p),ovr=overspent(p),sts=safeToSpend(p);
+  var pool=spendPool(p),ovr=overspent(p),sts=safeToSpend(p),cu=catchingUp(p),cuL=cuList(p);
   var hot=pct>pace+8,bad=ovr>0;
+  var cuWord=cuL.length===1?esc(cuL[0].name)+' is paying back':'catching up';
   // on-dark colours, the light-background ones are unreadable on the green card
   var chip=bad?['rgba(226,162,148,.5)','#E2A294','Overspent']
     :hot?['rgba(212,185,120,.5)','#D4B978','Running hot']
     :['rgba(159,182,168,.45)','#A9CDB8','On plan'];
-  var sub=bad
-    ? m0(pool)+' in spending envelopes, less '+m0(ovr)+' overspent'
+  var less=[];
+  if(cu)less.push('<span style="color:var(--amber)">'+m0(cu)+' '+cuWord+'</span>');
+  if(ovr)less.push('<span style="color:#E2A294">'+m0(ovr)+' overspent</span>');
+  // both at once is the longest line on Home, so it drops words to stay on two lines
+  if(cu&&ovr)less[0]=less[0].replace(' is paying back',' paying back');
+  var sub=less.length
+    ? m0(pool)+(cu&&ovr?' spending, less '+less.join(', '):' in spending envelopes, less '+less.join(' and '))
     : 'out of '+m0(pool)+' put into spending envelopes';
+  // the latest date any planned negative is back to zero
+  var cuBack=null;cuL.forEach(function(e){var r=payback(e,p);if(r.p===null)cuBack=-1;else if(cuBack!==-1&&(cuBack===null||r.p>cuBack))cuBack=r.p});
   var list=spendEnvs().filter(function(e){return bal(e.id,p)>0}).sort(function(a,b){return bal(b.id,p)-bal(a.id,p)});
   var com=committedEnvs().reduce(function(s,e){return s+Math.max(0,bal(e.id,p))},0);
   var paceWord=bad?pct+'% spent. Cover the overspend first.'
+    :cu?(cuL.length===1?esc(cuL[0].name)+(cuBack>0?' back to $0 by '+pShort(cuBack):' will not catch up on its own'):
+       cuBack>0?'All catching up by '+pShort(cuBack):'Catching up, see Budget')
     :hot?pct+'% spent, ahead of today\u2019s pace'
     :pct+'% spent, in step with today\u2019s pace';
   // the ring replaces the pace bar and its caption, which is three stacked rows down to one
@@ -743,14 +793,14 @@ function paintHero(p){
    '<div class="hmain">'+
     '<div style="min-width:0;flex:1"><span class="lbl">Safe to spend</span>'+
      '<span class="big mono">'+m(sts)+'</span>'+
-     '<span class="state" style="color:'+(bad?'#E2A294':'var(--onsage)')+'">'+sub+'</span></div>'+
+     '<span class="state" style="color:var(--onsage)">'+sub+'</span></div>'+
     '<div class="ring"><svg width="58" height="58" viewBox="0 0 62 62" role="img" aria-label="'+pct+' percent of this period’s spending money used">'+
       '<circle cx="31" cy="31" r="25" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="6"/>'+
       '<circle cx="31" cy="31" r="25" fill="none" stroke="'+ringCol+'" stroke-width="6" stroke-linecap="round"'+
         ' stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 31 31)"/>'+
       '<text x="31" y="35" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="14"'+
         ' font-weight="500" fill="#F3F1E8">'+pct+'%</text></svg>'+
-      '<small>'+(bad?'cover first':'spent')+'</small></div></div>'+
+      '<small>'+(bad?(cu?'cover '+m0(ovr):'cover first'):'spent')+'</small></div></div>'+
    '<div class="hfoot"><span>'+paceWord+'</span><span id="hh">'+(heroOpen?'Close':'Open')+'</span></div>'+
    '<div id="hd" style="display:'+(heroOpen?'block':'none')+'">'+
     '<div class="hsep"></div>'+
@@ -831,7 +881,11 @@ function paintDay(){
    'padding:13px 14px;margin-top:10px')}
 function tileData(p){
   var groc=everyday().filter(function(e){return /groc/i.test(e.name)})[0]||everyday()[0];
-  var ovr=overspent(p),ie=inEnvelopes(p),ltf=leftToFund(p),tg=targetTotal(p);
+  var ovr=overspent(p),ie=inEnvelopes(p),ltf=leftToFund(p),tg=targetTotal(p),cu=catchingUp(p),cuL=cuList(p);
+  var nO=overspentList(p).length;
+  var cuSub=cu?'<span style="color:var(--amber)">'+(cuL.length===1?esc(cuL[0].name):cuL.length)+' catching up</span>':'';
+  var cuHtml=cu?'<p style="font-size:10.5px;letter-spacing:.06em;color:var(--amber);margin:12px 0 2px">CATCHING UP, NO ACTION NEEDED</p>'+
+    cuL.map(function(e){return kv(esc(e.name)+' <span style="font-size:11px;color:var(--mut)">\u00B7 '+cuWhen(e,p)+'</span>',m(bal(e.id,p)),'var(--amber)')}).join(''):'';
   var everyF=0;everyday().forEach(function(e){everyF+=totalFunded(e.id,p)});
   var allF=0;envs().forEach(function(e){allF+=Math.max(0,totalFunded(e.id,p))});
   var gb=groc?bal(groc.id,p):0,gf=groc?totalFunded(groc.id,p):0,gs=groc?totalSpent(groc.id,p):0;
@@ -841,16 +895,19 @@ function tileData(p){
     sub:gf?Math.round(Math.min(100,gs/gf*100))+'% used':'not funded yet',
     rows:groc?[['Funded, all in',m(gf)],['Spent',m(gs)],['Left',m(gb),gb<0?'var(--red)':null]]:[]},
    {k:2,n:'Overspent',v:m0(ovr),ic:'\u26A0\uFE0F',chip:'var(--badbg)',bar:'var(--redf)',
-    pct:everyF?Math.min(1,ovr/everyF):0,vc:'var(--red)',sub:ovr?overspentList(p).length+' envelopes':'\u2713 none',
-    rows:overspentList(p).map(function(e){return [e.name,m(bal(e.id,p)),'var(--red)']})},
+    pct:everyF?Math.min(1,ovr/everyF):0,vc:'var(--red)',sub:(ovr?nO+' envelope'+(nO===1?'':'s'):cu?'none to cover':'\u2713 none')+(cuSub?' \u00B7 '+cuSub:''),
+    rows:overspentList(p).map(function(e){return [e.name,m(bal(e.id,p)),'var(--red)']}),extra:cuHtml},
    {k:3,n:'In envelopes',v:m0(ie),ic:'\u2709\uFE0F',chip:'var(--okbg)',bar:'var(--green)',
-    pct:allF?Math.min(1,ie/allF):0,vc:'var(--ink)',sub:'across '+envs().length+' envelopes',
+    pct:allF?Math.min(1,ie/allF):0,vc:ie<0?'var(--red)':'var(--ink)',sub:(ovr+cu)?'after '+m0(ovr+cu)+' overspent':'across '+envs().length+' envelopes',
     rows:[['Everyday spending',m(spendPool(p))],
       ['Committed',m(committedEnvs().reduce(function(s,e){return s+Math.max(0,bal(e.id,p))},0))],
       ['Bills set aside',m(bills().reduce(function(s,e){return s+Math.max(0,bal(e.id,p))},0))],
       ['Yearly expenses',m(sinks().reduce(function(s,e){return s+Math.max(0,bal(e.id,p))},0))],
       ['Goals',m(goals().reduce(function(s,e){return s+Math.max(0,bal(e.id,p))},0))],
-      ['Buffer, not placed yet',m(Math.max(0,bufBal(p))),bufBal(p)>0?'var(--brasst)':null]]},
+      ['Buffer, not placed yet',m(Math.max(0,bufBal(p))),bufBal(p)>0?'var(--brasst)':null]].concat(
+      (ovr?[['Overspent, already gone',m(-ovr),'var(--red)']]:[]).concat(
+      cu?[['Catching up, already gone',m(-cu),'var(--amber)']]:[]).concat(
+      (ovr||cu)?[['Really in envelopes',m(ie)]]:[]))},
    {k:4,n:'Left to fund',v:m0(ltf),ic:'\u{1FA99}',chip:'var(--okbg)',bar:'var(--sage)',
     pct:tg?Math.min(1,ltf/tg):0,vc:'var(--ink)',sub:ltf?'this pay period':'\u2713 fully funded',
     rows:[[pShort(p)+' deposit',m(dep(p))],['Assigned',m(allocTotal(p))]].concat(
@@ -880,9 +937,10 @@ function paintDrawer(p){
    '<span class="serif" style="font-size:15px">'+esc(t.n)+'</span>'+
    '<span class="muted" style="font-size:11px">tap tile to close</span></div>'+
    (t.rows.length?t.rows.map(function(r){return kv(esc(r[0]),r[1],r[2]||null)}).join('')
-    :'<p class="empty">Nothing here right now.</p>')+
+    :t.extra?'':'<p class="empty">Nothing here right now.</p>')+
    (showCover?'<button id="dcov" class="cta" style="margin-top:12px;'+(bb>0?'':'background:var(--mutbg);color:var(--mut)')+'">'+
-     (bb>0?'Cover from buffer · '+m(bb)+' available':'Buffer is empty')+'</button>':''),
+     (bb>0?'Cover from buffer · '+m(bb)+' available':'Buffer is empty')+'</button>':'')+
+   (t.extra||''),
    'padding:13px 14px;margin-top:10px');
   if($('#dcov'))$('#dcov').onclick=function(){
     if(bufBal(p)<=0)return toast('The buffer has nothing in it yet');
@@ -1086,6 +1144,7 @@ function screenEnvForm(){
     '<div id="epri" style="display:flex;gap:6px;flex-wrap:wrap"></div>'+
     '<p class="muted" style="margin-top:6px">This sets the order the buffer fills things in. '+
     'Never means skip it unless you tick it by hand.</p>'+
+    (e&&isBuf(e)?'':'<div class="card" id="cuc" style="margin-top:18px;padding:12px 14px"></div>')+
     '<div id="etgtwrap" style="display:'+(efKind==='goal'?'block':'none')+'"><p class="sec">Target amount</p>'+
      '<input id="etgt" class="mono" inputmode="decimal" value="'+(e&&e.target?(e.target/100).toFixed(2):'')+'" placeholder="5000.00"></div>'+
     '<div class="card" style="margin-top:18px;padding:12px 14px">'+
@@ -1154,6 +1213,27 @@ function screenEnvForm(){
     else if(mo>0)s='Per paycheck is blank, so each payday gets $'+auto.toFixed(2)+' automatically.';
     $('#ehint').textContent=s}
   $('#emo').oninput=hint;$('#epp').oninput=hint;hint();
+  var cuOn=!!(e&&e.catchup);
+  function cuPaint(){var w=$('#cuc');if(!w)return;
+    var p=curP(),nm=esc(($('#en').value||'').trim()||'This envelope'),tl='';
+    if(e&&cuOn){var b=bal(e.id,p);
+      if(b<0){var r=payback(e,p),st=r.steps,lo=Math.min.apply(null,st.map(function(x){return x.b}).concat([b]));
+        if(st.length>6)st=st.slice(0,4).concat([st[st.length-1]]);
+        tl='<div style="border-top:1px solid var(--hair);margin-top:9px;padding-top:6px">'+
+          st.map(function(x){var ok=x.b>=0,w=ok?16:Math.max(4,Math.round(x.b/lo*85));
+            return '<div class="cutl"><span style="color:var(--mut)">'+(x.now?'Today':pShort(x.p))+'</span>'+
+              '<span class="bar"><i style="width:'+w+'%;background:'+(ok?'var(--green)':'var(--amber)')+'"></i></span>'+
+              '<span class="mono" style="text-align:right;color:'+(ok?'var(--green)':'var(--amber)')+'">'+(ok?'+':'')+m0(x.b)+(ok?' \u2713':'')+'</span></div>'}).join('')+
+          (r.p===null?'<p class="muted" style="margin-top:6px;color:var(--red)">'+(r.per?'Its funding is too small to catch up within two years.':'It has no funding set, so it will not catch up. Give it a monthly amount.')+'</p>':'')+
+          '<p class="muted" style="margin-top:6px;font-size:11.5px">This counts the funding it already gets. New spending before then moves the date out, and this updates each time.</p></div>'}
+      else tl='<p class="muted" style="margin-top:8px;font-size:11.5px">'+nm+' is at '+m(b)+' now. When it dips below zero, the payback date shows here.</p>'}
+    w.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:12px">'+
+       '<span><span style="display:block;font-size:14px">Can go negative and pay itself back</span>'+
+       '<span style="display:block;font-size:11.5px;color:var(--mut);margin-top:3px;line-height:1.45">For gifts, holidays, anything that comes due before the money builds up. It stops asking to be covered and stays out of the cover sheet. Safe to spend still takes it off.</span></span>'+
+       '<button id="cusw" class="cusw'+(cuOn?' on':'')+'" role="switch" aria-checked="'+cuOn+'" aria-label="Can go negative and pay itself back"></button></div>'+tl;
+    w.style.borderColor=cuOn?'rgba(224,168,102,.55)':'';
+    $('#cusw').onclick=function(){cuOn=!cuOn;cuPaint()}}
+  cuPaint();
   var pairOn=!!(e&&e.feeds&&data.env[e.feeds]);
   function pairState(){var v=$('#efeeds').value;
     $('#pairs').textContent=v?'Hands its balance to '+(data.env[v]||{}).name:'Off, it just gets paid on its own'}
@@ -1168,7 +1248,7 @@ function screenEnvForm(){
     var feeds=$('#efeeds').value||null,tgt=efKind==='goal'?toC($('#etgt').value):null;
     var id=efId||('e'+uid()),prev=efId?JSON.parse(JSON.stringify(data.env[efId])):null;
     var obj={name:name,kind:efKind,sub:efKind==='goal'?efSub:null,monthly:mo,perPay:pp,dueDay:dd,
-      fundFrom:ff!=='both'?ff:null,feeds:feeds,target:tgt,roll:true,pri:pri,disc:disc,
+      fundFrom:ff!=='both'?ff:null,feeds:feeds,target:tgt,roll:true,pri:pri,disc:disc,catchup:cuOn||null,
       sys:(prev&&prev.sys)||null,ord:(prev&&prev.ord)||Object.keys(data.env).length,
       paid:prev?prev.paid||null:null};
     put('env/'+id,obj);
@@ -1375,10 +1455,31 @@ function openMove(fromId){
   put('tx/'+id,{kind:'mv',amt:amt,from:from,to:dest.id,payee:'Moved to '+dest.name,date:today(),who:cfg.member||''});
   bar('Moved '+m(amt)+' into '+esc(dest.name),function(){delete data.tx[id]})}
 /* ========== ADD EXPENSE ========== */
-var lines=[],actLine=0,txKind='exp',loose='',chipQ='';
+var lines=[],actLine=0,txKind='exp',loose='',chipQ='',stot='';
+/* Splitting: the total goes in first, then each envelope takes a piece of it. The one
+   envelope left blank takes whatever is still unplaced, so the last one fills itself.
+   actLine -1 means the keypad is typing the total. */
+function splitMath(){
+  var T=toC(stot),S=0,blank=[];
+  lines.forEach(function(l,i){if(l.a==='')blank.push(i);else S+=toC(l.a)});
+  var rem=T-S,auto=(T>0&&blank.length===1)?blank[0]:-1;
+  return {T:T,S:S,rem:rem,blank:blank,auto:auto}}
+function lineAmt(i,M){M=M||splitMath();
+  if(lines.length>1&&i===M.auto)return Math.max(0,M.rem);
+  return toC(lines[i].a)}
+/* Going from one envelope to two turns what was typed into the total. Going back to one
+   hands the total to the envelope that is left. */
+function toSplit(){
+  if(lines.length===2&&!stot){
+    var had=lines[0].a||loose;stot=had;lines[0].a='';loose='';
+    actLine=had?0:-1}}
+function fromSplit(){
+  if(lines.length===1&&stot){lines[0].a=stot;stot='';actLine=0}
+  else if(!lines.length&&stot){loose=stot;stot='';actLine=0}
+  if(lines.length>1&&actLine>=lines.length)actLine=lines.length-1}
 function goAdd(envId){
   lines=envId?[{id:envId,a:'',who:cfg.member||''}]:[];
-  loose='';chipQ='';actLine=0;tab='add';sub=null;render()}
+  loose='';chipQ='';stot='';actLine=0;tab='add';sub=null;render()}
 function screenAdd(){
   if(!envs().length&&txKind!=='inc'){
     $('#app').innerHTML=hdr('Add expense',today())+'<div class="body"><p class="empty">Make an envelope first, over on Budget.</p></div>';return}
@@ -1400,23 +1501,29 @@ function screenAdd(){
     var b=el('button',txKind===x[0]?'on':'',x[1]);
     b.onclick=function(){txKind=x[0];render()};$('#kseg').appendChild(b)});
   if($('#cq')){var cq=$('#cq');cq.oninput=function(){chipQ=cq.value;paintChips()}}
-  $('#clr').onclick=function(){lines=[];actLine=0;paintChips();paintLines()};
+  $('#clr').onclick=function(){lines=[];actLine=0;stot='';loose='';paintChips();paintLines()};
+  $('#tot').onclick=function(){if(lines.length>1){actLine=-1;paintLines()}};
   envs().forEach(function(e){
     var c=el('button','pill',esc(e.name));c.dataset.k=e.id;c.dataset.n=e.name.toLowerCase();
     c.onclick=function(){
       var i=-1;lines.forEach(function(l,j){if(l.id===e.id)i=j});
-      if(i>=0){lines.splice(i,1);actLine=Math.max(0,Math.min(actLine,lines.length-1))}
-      else{lines.push({id:e.id,a:'',who:(lines[0]||{}).who||cfg.member||''});actLine=lines.length-1}
+      if(i>=0){lines.splice(i,1);if(actLine===i)actLine=lines.length>1?-1:0;
+        else if(actLine>i)actLine--;fromSplit()}
+      else{var first=!lines.length;
+        lines.push({id:e.id,a:first?loose:'',who:(lines[0]||{}).who||cfg.member||''});
+        if(first){loose='';actLine=0}
+        else{actLine=lines.length-1;toSplit();if(!stot)actLine=-1}}
       paintChips();paintLines()};
     $('#chips').appendChild(c)});
   ['1','2','3','4','5','6','7','8','9','.','0','\u232B'].forEach(function(k){
     var b=el('button','',k);
     b.onclick=function(){
-      var a=lines.length?lines[actLine].a:loose;
+      var onT=lines.length>1&&actLine<0;
+      var a=onT?stot:lines.length?lines[actLine].a:loose;
       if(k==='\u232B')a=a.slice(0,-1);
       else if(k==='.'){if(a.indexOf('.')<0)a=(a||'0')+'.'}
       else{if(/\.\d\d$/.test(a))return;a=(a==='0'?'':a)+k}
-      if(lines.length)lines[actLine].a=a;else loose=a;
+      if(onT)stot=a;else if(lines.length)lines[actLine].a=a;else loose=a;
       paintLines()};
     $('#pad').appendChild(b)});
   $('#lines').onclick=function(ev){
@@ -1424,7 +1531,8 @@ function screenAdd(){
     if(w){var i=+w.dataset.who,ids=Object.keys(data.members);
       if(!ids.length)return toast('Add a member in Settings first');
       var cur=ids.indexOf(lines[i].who);lines[i].who=ids[(cur+1)%ids.length];return paintLines()}
-    if(r){lines.splice(+r.dataset.rm,1);actLine=Math.max(0,Math.min(actLine,lines.length-1));paintChips();return paintLines()}
+    if(r){var ri=+r.dataset.rm;lines.splice(ri,1);if(actLine===ri)actLine=lines.length>1?-1:0;
+      else if(actLine>ri)actLine--;fromSplit();paintChips();return paintLines()}
     if(row){actLine=+row.dataset.i;paintLines()}};
   $('#go').onclick=function(){
     var py=$('#payee').value.trim(),dt=$('#tdate').value||today(),made=[],tot=0;
@@ -1436,14 +1544,22 @@ function screenAdd(){
       var i0=uid();made.push(i0);tot=amt;
       setPath(data,'tx/'+i0,{kind:'inc',amt:amt,env:BUFID,payee:py||'Income',date:dt,who:cfg.member||''})}
     else{
-      var bad=null;lines.forEach(function(l){if(!bad&&!(parseFloat(l.a)>0))bad=l});
-      if(bad){lines.forEach(function(l,j){if(l===bad)actLine=j});paintLines();
-        return toast('Give '+data.env[bad.id].name+' an amount first')}
-      lines.forEach(function(l){var id=uid();made.push(id);tot+=toC(l.a);
-        setPath(data,'tx/'+id,{kind:txKind,amt:toC(l.a),env:l.id,payee:py||(inc?'Income':'Expense'),date:dt,who:l.who||cfg.member||''})})}
+      var M=splitMath();
+      if(lines.length>1&&M.T>0){
+        if(M.rem<0)return toast(m(-M.rem)+' more than the '+m(M.T)+' total. Lower one of them');
+        if(M.blank.length>1){actLine=M.blank[0];paintLines();
+          return toast('Give '+data.env[lines[M.blank[0]].id].name+' an amount. Only one can take the rest')}
+        if(M.auto>=0&&M.rem<=0){actLine=M.auto;paintLines();
+          return toast('Nothing left for '+data.env[lines[M.auto].id].name+'. Remove it, or lower another')}
+        if(M.auto<0&&M.rem>0)return toast(m(M.rem)+' of the total is not placed yet')}
+      var bad=-1;lines.forEach(function(l,j){if(bad<0&&!(lineAmt(j,M)>0))bad=j});
+      if(bad>=0){actLine=bad;paintLines();
+        return toast('Give '+data.env[lines[bad].id].name+' an amount first')}
+      lines.forEach(function(l,j){var id=uid(),a=lineAmt(j,M);made.push(id);tot+=a;
+        setPath(data,'tx/'+id,{kind:txKind,amt:a,env:l.id,payee:py||(inc?'Income':'Expense'),date:dt,who:l.who||cfg.member||''})})}
     cache();if(rootRef)rootRef.child('tx').set(data.tx);
     var n=made.length;
-    lines=lines.length?[{id:lines[0].id,a:'',who:lines[0].who}]:[];loose='';actLine=0;
+    lines=lines.length?[{id:lines[0].id,a:'',who:lines[0].who}]:[];loose='';stot='';actLine=0;
     render();
     bar('Logged '+m(tot)+(py?' at '+esc(py):'')+(n>1?' across '+n+' envelopes':''),
       function(){made.forEach(function(id){delete data.tx[id]})})};
@@ -1462,19 +1578,34 @@ function paintLines(){
      '<p class="mono" style="font-size:38px;font-weight:500;text-align:center;color:'+(inc?'var(--green)':'var(--mut)')+'">'+
      m(toC(loose))+'</p>','padding:14px');
     $('#lines').innerHTML='';return}
-  var tot=0;lines.forEach(function(l){tot+=toC(l.a)});
-  var one=byId(lines[0].id);
-  $('#tot').innerHTML=card('<p class="muted" style="text-align:center;margin-bottom:4px">'+
-   (lines.length>1?'Split across '+lines.length+' envelopes':esc(one.name)+' \u00B7 '+m(bal(one.id,curP()))+' left')+'</p>'+
-   '<p class="mono" style="font-size:38px;font-weight:500;text-align:center">'+m(tot)+'</p>','padding:14px');
+  var M=splitMath(),one=byId(lines[0].id);
+  if(lines.length>1){
+    var onT=actLine<0,st,sc;
+    if(!M.T){st='Type the total first';sc='var(--mut)'}
+    else if(M.rem<0){st=m(-M.rem)+' over the total';sc='var(--red)'}
+    else if(M.auto>=0){st=M.rem>0?esc(byId(lines[M.auto].id).name)+' takes the last '+m(M.rem):'Nothing left for '+esc(byId(lines[M.auto].id).name);
+      sc=M.rem>0?'var(--green)':'var(--red)'}
+    else if(M.rem===0){st='\u2713 All placed';sc='var(--green)'}
+    else{st=m(M.rem)+' left to place';sc='var(--brasst)'}
+    $('#tot').innerHTML='<div class="card" style="padding:12px 14px;cursor:pointer;border:1px solid '+(onT?'var(--brass)':'var(--gline)')+'">'+
+     '<p class="muted" style="text-align:center;margin-bottom:2px">Total, split across '+lines.length+' envelopes'+(onT?'':' \u00B7 tap to change')+'</p>'+
+     '<p class="mono" style="font-size:36px;font-weight:500;text-align:center;color:'+(onT?'var(--brasst)':'var(--ink)')+'">'+
+      (M.T?m(M.T):'$'+(stot||'0'))+'</p>'+
+     '<p style="text-align:center;font-size:13px;margin-top:2px;color:'+sc+'">'+st+'</p></div>'}
+  else{
+    $('#tot').innerHTML=card('<p class="muted" style="text-align:center;margin-bottom:4px">'+
+     esc(one.name)+' \u00B7 '+m(bal(one.id,curP()))+' left</p>'+
+     '<p class="mono" style="font-size:38px;font-weight:500;text-align:center">'+m(toC(lines[0].a))+'</p>','padding:14px')}
   $('#lines').innerHTML=lines.map(function(l,i){
-    var e=byId(l.id),after=bal(l.id,curP())+(inc?toC(l.a):-toC(l.a));
+    var amt=lineAmt(i,M),isAuto=lines.length>1&&i===M.auto,e=byId(l.id),after=bal(l.id,curP())+(inc?amt:-amt);
     var who=(data.members[l.who]||{}).name||'who';
     return '<div data-i="'+i+'" style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:12px;'+
      'margin-bottom:6px;background:var(--card);border:1px solid '+(i===actLine?'var(--brass)':'var(--line)')+'">'+
      '<div style="flex:1;min-width:0"><p style="font-size:14px">'+esc(e.name)+'</p>'+
       '<p style="font-size:11px;color:'+(after<0?'var(--red)':'var(--mut)')+'">'+m(after)+' left after</p></div>'+
-     '<span class="mono" style="font-size:15px;min-width:64px;text-align:right;color:'+(i===actLine?'var(--brasst)':'var(--ink)')+'">$'+(l.a||'0')+'</span>'+
+     (isAuto?'<span style="min-width:64px;text-align:right;line-height:1.1"><span class="mono" style="font-size:15px;color:var(--green)">'+m(amt)+'</span>'+
+       '<br><span style="font-size:10px;color:var(--mut)">the rest</span></span>'
+      :'<span class="mono" style="font-size:15px;min-width:64px;text-align:right;color:'+(i===actLine?'var(--brasst)':'var(--ink)')+'">$'+(l.a||'0')+'</span>')+
      '<button data-who="'+i+'" style="padding:5px 9px;font-size:12px;border-radius:20px;width:auto">'+esc(who)+'</button>'+
      '<button data-rm="'+i+'" aria-label="Remove" style="padding:5px 9px;font-size:12px;border-radius:20px;width:auto">\u00D7</button>'+
      '</div>'}).join('')}
@@ -1971,11 +2102,7 @@ function setBody(){
     '<p class="muted" style="margin-bottom:10px">Wipes the money back to zero so you can fill the envelopes again. Assignments, transactions and PAID marks all go.</p>'+
     '<div style="display:flex;gap:8px"><button id="cp" style="flex:1">Clear this pay period</button>'+
     '<button id="ca" style="flex:1" class="danger">Clear the money</button></div>'+
-    '<button id="cb" style="width:100%;margin-top:8px" class="danger">\u{1F9E8} Delete every envelope and start from a blank list</button>','padding:13px 14px;margin-bottom:12px')+
-  card('<p class="sec" style="margin:0 0 6px">Display</p>'+
-    '<div class="kv"><span style="flex:1">In envelopes counts positive balances only</span>'+
-    '<button id="po" class="chip" style="background:'+(data.settings.posOnly!==false?'var(--okbg)':'var(--mutbg)')+';color:'+(data.settings.posOnly!==false?'var(--green)':'var(--mut)')+'">'+
-    (data.settings.posOnly!==false?'On':'Off')+'</button></div>','padding:13px 14px')}
+    '<button id="cb" style="width:100%;margin-top:8px" class="danger">\u{1F9E8} Delete every envelope and start from a blank list</button>','padding:13px 14px;margin-bottom:12px')}
 function wireSet(){
   $('#hj').onclick=function(){var c=$('#hc').value.trim();if(!c)return toast('Type a code');
     cfg.code=c;if(!cfg.member){var id='u'+uid();data.members[id]={name:'Me'};cfg.member=id}
@@ -1990,7 +2117,6 @@ function wireSet(){
     put('members/'+id,null);bar('Removed '+esc(prev.name),function(){data.members[id]=prev})}});
   $('#d1').onchange=function(){put('settings/income1',toC(this.value))};
   $('#d15').onchange=function(){put('settings/income15',toC(this.value))};
-  $('#po').onclick=function(){put('settings/posOnly',data.settings.posOnly===false)};
   function rec(which){
     var ps=monthPeriods(0),p=which==='1st'?ps[0]:ps[1],t={},n=0;
     envs().forEach(function(e){var v=alloc(e.id,p);if(v>0){t[e.id]=v;n++}});
