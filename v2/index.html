@@ -420,7 +420,7 @@ function priOf(e){var v=+(e.pri||2);return (v>=1&&v<=4)?v:2}
 function priName(e){var n='Normal';PRI.forEach(function(x){if(x[0]===priOf(e))n=x[1]});return n}
 function bills(){return envs().filter(function(e){return !isBuf(e)&&e.kind!=='goal'&&e.dueDay})}
 function everyday(){return envs().filter(function(e){return !isBuf(e)&&e.kind!=='goal'&&!e.dueDay})}
-/* An everyday envelope is yours to spend unless you marked it already spoken for.
+/* An everyday envelope is yours to spend unless you marked it Committed.
    Only the spendable ones feed Safe to Spend. */
 function isDisc(e){return !isBuf(e)&&e.kind!=='goal'&&!e.dueDay&&e.disc!==false}
 function spendEnvs(){return everyday().filter(isDisc)}
@@ -871,7 +871,7 @@ function paintHero(p){
    '<div id="hd" style="display:'+(heroOpen?'block':'none')+'">'+
     '<div class="hsep"></div>'+
     spark('#C9A961','var(--onsage)')+
-    (list.length?'<p class="hcap">Your spending envelopes. Remove one and its money stays in the envelope, it just stops counting toward Safe to spend.</p>'+
+    (list.length?'<p class="hcap">Your spending envelopes. Remove one to make it Committed. Its money stays in the envelope, it just stops counting toward Safe to spend.</p>'+
       list.map(function(e){
       return '<div class="hrow"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.name)+'</span>'+
         '<span style="display:flex;align-items:center;gap:10px;flex:0 0 auto">'+
@@ -903,7 +903,7 @@ function setDisc(id,v){
   var e=byId(id);if(!e)return;
   var was=e.disc===undefined?null:e.disc;
   put('env/'+id+'/disc',v);
-  bar(esc(e.name)+(v?' counts toward Safe to spend again':' removed from Safe to spend. Its money stays put.'),
+  bar(esc(e.name)+(v?' counts toward Safe to spend again':' moved to Committed. Its money stays put.'),
     function(){setPath(data,'env/'+id+'/disc',was)})}
 function spark(stroke,cap){
   var v=dailySpend(14),mx=Math.max.apply(null,v.concat([1]));
@@ -1298,7 +1298,7 @@ function screenEnvForm(){
     $('#dischint').textContent=show?(disc
       ?'Counts toward Safe to Spend on the Home screen.'
       :'Still rolls over and still shows in Budget, it just stays out of Safe to Spend.'):''}
-  [[true,'Mine to spend'],[false,'Already spoken for']].forEach(function(x){
+  [[true,'Safe to spend'],[false,'Committed']].forEach(function(x){
     var b=el('button','pill'+(disc===x[0]?' on':''),x[1]);b.dataset.v=x[0]?'1':'0';
     b.onclick=function(){disc=x[0];
       Array.prototype.forEach.call($('#edisc').children,function(c){c.className='pill'+((c.dataset.v==='1')===disc?' on':'')});
@@ -1378,16 +1378,16 @@ function screenSort(){
   var pool=spendPool(p),com=committedEnvs().reduce(function(s,e){return s+Math.max(0,bal(e.id,p))},0);
   $('#app').innerHTML=backHdr('What counts as spendable',m0(pool)+' spendable')+
    '<div class="body">'+
-    '<p class="muted" style="margin-bottom:12px">Everyday envelopes only. Bills, yearly expenses, goals and the buffer '+
-    'are never in Safe to Spend. Committed money still rolls over, it just stops pretending to be spendable.</p>'+
-    card(kv('Mine to spend',m(pool),'var(--green)')+kv('Already spoken for',m(com),'var(--mut)'),'padding:4px 14px 10px')+
+    '<p class="muted" style="margin-bottom:12px">Only everyday envelopes count. Uncheck one if its money already has a job. '+
+    'It still rolls over and gets funded, it just stops counting as safe to spend.</p>'+
+    card(kv('In spending envelopes',m(pool),'var(--green)')+kv('Committed',m(com),'var(--mut)'),'padding:4px 14px 10px')+
     (all.length?'<div id="sl" style="margin-top:14px">'+all.map(function(e){
       var on=isDisc(e),b=bal(e.id,p);
       return '<button class="sortr'+(on?' on':'')+'" data-s="'+e.id+'">'+
         '<span class="sck">'+(on?'✓':'')+'</span>'+
         '<span style="flex:1;min-width:0"><span style="display:block;font-size:14px">'+esc(e.name)+'</span>'+
         '<span style="display:block;font-size:11px;color:var(--mut);margin-top:1px">'+
-          (on?'counts toward safe to spend':'committed, not counted')+'</span></span>'+
+          (on?'counts toward safe to spend':'committed, still rolls over')+'</span></span>'+
         '<span class="mono" style="font-size:14px;color:'+(on?'var(--ink)':'var(--mut)')+'">'+m(b)+'</span></button>'}).join('')+'</div>'
       :'<p class="empty">No everyday envelopes yet.</p>')+
     '<p class="muted" style="margin-top:14px">Tip: things like Church, Baby Sitter, Home School and investments are usually '+
