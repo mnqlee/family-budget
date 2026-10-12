@@ -40,10 +40,21 @@
 html{-webkit-text-size-adjust:100%;background:#102019}
 body{margin:0;color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100dvh;
+  background:radial-gradient(130% 62% at 86% -4%,rgba(201,169,97,.22) 0%,rgba(201,169,97,0) 56%) 0 0/100% 100lvh no-repeat,
+    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%) 0 0/100% 100lvh no-repeat,#102019;isolation:isolate}
+/* The same light is also laid on the top of the page itself, sized to one screen so it can never
+   stretch. If iPhone skips a frame of the pinned layer while a tab redraws (it starts each tab
+   at the top), that copy is what shows, so the frame looks the same instead of flashing dark.
+   isolation keeps the pinned light below the content but above the page colour, wherever the
+   app is opened; without it a host page's white body could paint over the light.
+   The page light is pinned to the screen, the way the Envelope B mockup does it. Before, it
+   was painted on the page itself, and iPhone stretches that over however long the page is,
+   so every tab change shifted the whole screen and the glass bar one shade in a single frame:
+   the jump and flash in the recordings. Pinned, it is the same on every tab. */
+body::before{content:"";position:fixed;left:0;right:0;top:0;height:100lvh;z-index:-1;pointer-events:none;
   background:
     radial-gradient(130% 62% at 86% -4%,rgba(201,169,97,.22) 0%,rgba(201,169,97,0) 56%),
-    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%);
-  background-attachment:fixed}
+    linear-gradient(168deg,#23493B 0%,#16302A 42%,#102019 100%) #102019}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 13px;color:var(--ink)}
 input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;color:var(--ink)}
@@ -122,6 +133,13 @@ p{margin:0}
 .deep .hempty{font-size:12.5px;color:var(--onsage);text-align:center;padding:12px 0}
 .deep .hbtn{width:100%;margin-top:11px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);
   color:var(--cream);border-radius:12px;padding:10px;font-size:13px}
+.deep .hrow.hsum{border-top:1px solid rgba(255,255,255,.28);font-weight:600}
+.deep .hrow.htot{border-top:1px solid rgba(255,255,255,.28);font-weight:600;font-size:14px;color:var(--cream)}
+.deep .hnote{display:block;font-size:11px;color:var(--onsage);margin-top:1px}
+.deep .hcap{font-size:11px;line-height:1.4;color:var(--onsage);margin:2px 0 6px}
+.deep .hrm{padding:5px 10px;border-radius:999px;font-size:11.5px;line-height:1.2;flex:0 0 auto;
+  background:rgba(255,255,255,.08);border:1px solid rgba(226,162,148,.45);color:#F0C2B8}
+.deep .hrm:active{background:rgba(226,162,148,.2)}
 .deep .dmv{width:24px;height:24px;padding:0;border-radius:7px;font-size:12px;line-height:1;flex:0 0 auto;
   background:rgba(255,255,255,.12);border:0;color:var(--cream)}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -161,8 +179,8 @@ p{margin:0}
 .lp button:active,.rp button:active{filter:brightness(.9)}
 /* must be opaque: it slides over the action buttons */
 .fg{position:relative;background:var(--panel);touch-action:pan-y;-webkit-user-select:none;user-select:none;
-  transition:transform .34s cubic-bezier(.22,1,.36,1)}
-.sw.act .fg{will-change:transform}
+  -webkit-touch-callout:none;transition:transform .4s cubic-bezier(.32,.72,0,1)}
+.sw.act .fg,.fg.hot{will-change:transform}
 .fg.dr{transition:none}
 .erow{display:block;width:100%;text-align:left;border:0;border-radius:0;background:var(--panel);padding:0;
   border-left:3px solid transparent}
@@ -247,20 +265,45 @@ p{margin:0}
   bottom:calc(84px + env(safe-area-inset-bottom,0px));display:none;align-items:center;gap:8px;
   background:#0C1A15;color:#F3F1E8;border-radius:12px;padding:11px 13px;font-size:13px;z-index:60}
 #undo button{border:0;background:transparent;color:#C9A961;font-weight:500;font-size:13px;padding:4px 8px}
-/* Warm glass. The soft gold glow low in the bar is painted into the bar itself, so it looks
-   the same in the app, in Safari and in a preview, whatever is behind it. */
-#nav{position:fixed;left:0;right:0;bottom:0;display:flex;z-index:50;
-  background:radial-gradient(95% 58px at 50% 64%,rgba(230,168,70,.15),rgba(230,168,70,0)),rgba(18,31,24,.9);
-  -webkit-backdrop-filter:saturate(140%) blur(20px);backdrop-filter:saturate(140%) blur(20px);
-  border-top:1px solid rgba(255,255,255,.09);
-  padding:10px 6px calc(12px + env(safe-area-inset-bottom,0px));
-  transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden;
-  box-shadow:0 -1px 0 rgba(255,255,255,.06),0 -10px 24px -16px rgba(0,0,0,.5)}
-#nav button{flex:1;border:0;background:transparent;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--mut);font-size:10px}
-#nav button.on{color:#C9A961}
-#nav .fab{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;
-  background:var(--brass);color:#16261F;margin-top:-26px;border:4px solid #142521;font-size:30px;line-height:1;
-  box-shadow:0 0 22px rgba(201,169,97,.4)}
+/* The bar is a sheet of the same glass as the cards, rounded at the top, resting on the bottom
+   edge. The tab you are on sits in a pill of gold wash glass that slides from tab to tab. */
+#nav{position:fixed;left:0;right:0;bottom:0;display:flex;z-index:50;border-radius:24px 24px 0 0;
+  background:linear-gradient(rgba(255,255,255,.07),rgba(255,255,255,.07)),rgba(14,28,23,.82);
+  -webkit-backdrop-filter:saturate(155%) blur(24px);backdrop-filter:saturate(155%) blur(24px);
+  border:1px solid rgba(255,255,255,.17);border-bottom:0;
+  padding:9px 6px calc(10px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+/* No forced layer on the bar (no translateZ). iPhone held a stale picture of that layer while
+   the pill changed colour, which showed as a grey box. The Envelope B mockup never had it. */
+#nav::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(170deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.035) 30%,rgba(255,255,255,0) 55%)}
+#nav button{position:relative;z-index:2;flex:1;border:0;background:transparent;padding:4px 0;display:flex;flex-direction:column;
+  align-items:center;gap:3px;color:#B9CCC1;font-size:10px;-webkit-tap-highlight-color:transparent;transition:color .3s}
+#nav button.on{color:#EEDDB5}
+/* The gold wash pill lives inside each tab. iPhone draws a dark box for a moment whenever
+   something inside a frosted bar fades or moves on its own layer, so the pill never uses
+   opacity or movement: only its colour strength changes, which iPhone paints in place. */
+@property --pa{syntax:'<number>';inherits:false;initial-value:0}
+#nav button:not([data-t="add"])::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:62px;margin-left:-31px;
+  border-radius:15px;z-index:-1;pointer-events:none;--pa:0;
+  background:linear-gradient(180deg,rgba(220,190,125,calc(.3*var(--pa))) 0%,rgba(220,190,125,calc(.1*var(--pa))) 55%,rgba(220,190,125,calc(.03*var(--pa))) 100%),
+    linear-gradient(158deg,rgba(255,255,255,calc(.12*var(--pa))),rgba(255,255,255,0) 45%);
+  box-shadow:inset 0 1px 0 rgba(232,206,150,calc(.55*var(--pa)));
+  transition:--pa .24s ease}
+#nav button.on::before{--pa:1}
+#nav .fab{display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;margin-top:-24px;
+  font-size:28px;line-height:1;color:#E6D5A8;
+  background:linear-gradient(155deg,rgba(255,255,255,.32) 0%,rgba(255,255,255,.1) 45%,rgba(255,255,255,.06) 100%),rgba(30,56,46,.75);
+  border:1.5px solid rgba(214,190,128,.75);
+  box-shadow:0 6px 16px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.35);
+  transition:box-shadow .3s ease,color .3s ease,border-color .3s ease}
+#nav button:active .fab{box-shadow:0 3px 8px rgba(0,0,0,.35),inset 0 2px 6px rgba(0,0,0,.25)}
+/* on the Add screen the plus fills with the same gold wash as the pill */
+#nav button.on .fab{color:#F6EBCF;border-color:rgba(226,200,140,.9);
+  background:linear-gradient(180deg,rgba(220,190,125,.58) 0%,rgba(220,190,125,.2) 55%,rgba(220,190,125,.06) 100%),
+    linear-gradient(155deg,rgba(255,255,255,.18),rgba(255,255,255,0) 45%),rgba(30,56,46,.7);
+  box-shadow:0 6px 16px rgba(0,0,0,.35),0 0 16px rgba(226,200,140,.22),inset 0 1px 0 rgba(255,255,255,.4)}
+@media (prefers-reduced-motion:reduce){#nav button::before{transition:none}}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#7FC49A;margin-right:6px}
 .dot.off{background:#C9846F}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -313,7 +356,9 @@ function connect(){
           if(rootRef)rootRef.child('more').set(data.more).catch(function(){})}
         migrate();ensureMember();cache()}
       else{rootRef.set(data)}
-      online=true;render()});
+      online=true;
+      if(typing()){pendingRender=true;return}
+      render()});
     firebase.database().ref('.info/connected').on('value',function(s){online=!!s.val();var d=document.getElementById('syncDot');if(d)d.className='dot'+(online?'':' off')});
   }catch(e){}
 }
@@ -484,59 +529,77 @@ function toast(msg){bar(esc(msg),null)}
 var openRow=null,drag=null;
 /* One row can be open at a time. The finger is captured the moment it commits to a
    sideways drag, the release is heard on the window so a finger lifted off the row
-   can never strand it half open, and a flick opens the row even if it is a short one. */
+   can never strand it half open, and a flick opens the row even if it is a short one.
+   Smoothness: the row is put on its own layer as soon as a finger lands (not halfway into
+   the drag), moves are painted once per screen refresh, the edge stretches like iOS rubber
+   instead of hitting a wall, and the settle is quicker the faster you flick. */
+function rubber(over,dim){var c=dim||60;return c*(1-1/(over/c+1))}
 function swipe(w,o){
   var fg=$('.fg',w),L=o.left||0,R=o.right||0,pos=0,settle;
-  function set(v,anim){
+  function set(v,anim,dur){
     fg.classList.toggle('dr',!anim);
+    fg.style.transitionDuration=anim&&dur?dur+'ms':'';
     fg.style.transform='translate3d('+v+'px,0,0)';
     clearTimeout(settle);
     if(v!==0){w.classList.add('act');return}
-    if(anim)settle=setTimeout(function(){w.classList.remove('act')},360)}
+    if(anim)settle=setTimeout(function(){w.classList.remove('act');fg.classList.remove('hot')},(dur||400)+20)
+    else fg.classList.remove('hot')}
   var api={el:w,fg:fg,L:L,R:R,tap:o.tap,
     at:function(){return pos},
     set:set,
-    close:function(){pos=0;set(0,true);if(openRow===api)openRow=null},
-    to:function(v){
+    close:function(dur){pos=0;set(0,true,dur);if(openRow===api)openRow=null},
+    to:function(v,dur){
       if(v&&openRow&&openRow!==api)openRow.close();
-      pos=v;set(v,true);
+      pos=v;set(v,true,dur);
       if(v){openRow=api;if(navigator.vibrate){try{navigator.vibrate(8)}catch(err){}}}
       else if(openRow===api)openRow=null}};
   fg.addEventListener('pointerdown',function(e){
     if(drag)return;
+    fg.classList.add('hot');
     drag={api:api,id:e.pointerId,x0:e.clientX,y0:e.clientY,lx:e.clientX,lt:e.timeStamp,
-      cur:pos,vel:0,mode:'p',moved:false}});
+      cur:pos,vel:0,mode:'p',moved:false,raf:0}});
   return api}
+function paintDrag(){var d=drag;if(!d)return;d.raf=0;d.api.set(d.cur,false)}
 function dragMove(e){
   var d=drag;if(!d||e.pointerId!==d.id)return;
   var a=d.api,dx=e.clientX-d.x0,dy=e.clientY-d.y0;
   if(d.mode==='v')return;
   if(d.mode==='p'){
-    if(Math.abs(dx)<9&&Math.abs(dy)<9)return;
+    if(Math.abs(dx)<7&&Math.abs(dy)<7)return;
     d.moved=true;
-    if(Math.abs(dy)>Math.abs(dx)){d.mode='v';return}   // let the page scroll instead
+    if(Math.abs(dy)>Math.abs(dx)*0.9){d.mode='v';a.fg.classList.remove('hot');return}   // let the page scroll instead
     d.mode='h';d.x0=d.lx=e.clientX;d.lt=e.timeStamp;
     a.el.classList.add('act');
     try{a.fg.setPointerCapture(d.id)}catch(err){}
     return}
   if(e.cancelable)e.preventDefault();
   var dt=e.timeStamp-d.lt;
-  if(dt>0){d.vel=d.vel*0.6+((e.clientX-d.lx)/dt)*0.4;d.lx=e.clientX;d.lt=e.timeStamp}
+  if(dt>0){d.vel=d.vel*0.5+((e.clientX-d.lx)/dt)*0.5;d.lx=e.clientX;d.lt=e.timeStamp}
   var v=a.at()+(e.clientX-d.x0);
-  if(v<-a.R)v=-a.R-(a.R?Math.min(14,(-a.R-v)*0.3):0);
-  else if(v>a.L)v=a.L+(a.L?Math.min(14,(v-a.L)*0.3):0);
-  d.cur=v;a.set(v,false)}
+  // past the open position, and in a direction with no actions, the row stretches like rubber
+  if(v<-a.R)v=-a.R-rubber(-a.R-v,a.R?50:30);
+  else if(v>a.L)v=a.L+rubber(v-a.L,a.L?50:30);
+  d.cur=v;
+  if(!d.raf)d.raf=requestAnimationFrame(paintDrag)}
 function dragEnd(e,cancelled){
   var d=drag;if(!d||(e&&e.pointerId!==d.id))return;
   var a=d.api;drag=null;
+  if(d.raf){cancelAnimationFrame(d.raf);d.raf=0}
   try{a.fg.releasePointerCapture(d.id)}catch(err){}
   if(d.mode==='h'){
     if(cancelled)return a.to(a.at());
-    var open=0;
-    // a flick decides on its own, otherwise a third of the way across counts
-    if(d.vel<-0.45&&a.R)open=-a.R;else if(d.vel>0.45&&a.L)open=a.L;
+    var open=0,start=a.at();
+    // a flick back toward closed just closes, like Mail; any other flick decides on its
+    // own; otherwise a third of the way across counts
+    if(start<0&&d.vel>0.4)open=0;else if(start>0&&d.vel<-0.4)open=0;
+    else if(d.vel<-0.4&&a.R)open=-a.R;else if(d.vel>0.4&&a.L)open=a.L;
     else if(d.cur<-a.R*0.33&&a.R)open=-a.R;else if(d.cur>a.L*0.33&&a.L)open=a.L;
-    return a.to(open)}
+    // carry the finger's speed into the settle: a fast flick finishes fast
+    var dist=Math.abs(open-d.cur),sp=Math.max(0.35,Math.abs(d.vel));
+    var dur=Math.round(Math.max(200,Math.min(420,dist/sp*1.6)));
+    a.set(d.cur,false);void a.fg.offsetWidth;
+    return a.to(open,dur)}
+  if(d.mode!=='h'&&a.at()===0)a.fg.classList.remove('hot');
   if(d.mode==='p'&&!d.moved){
     if(a.at()!==0)return a.close();
     if(a.tap)a.tap()}}
@@ -777,8 +840,8 @@ function paintHero(p){
   if(ovr)less.push('<span style="color:#E2A294">'+m0(ovr)+' overspent</span>');
   // both at once is the longest line on Home, so it drops words to stay on two lines
   if(cu&&ovr)less[0]=less[0].replace(' is paying back',' paying back');
-  var sub=less.length
-    ? m0(pool)+(cu&&ovr?' spending, less '+less.join(', '):' in spending envelopes, less '+less.join(' and '))
+  var subTxt=less.length
+    ? m0(pool)+(cu&&ovr?' spending, less '+less.join(', '):' in spending envelopes, less '+less.join(' and '))+(cu&&ovr?'':' = '+m0(sts))
     : 'out of '+m0(pool)+' put into spending envelopes';
   // the latest date any planned negative is back to zero
   var cuBack=null;cuL.forEach(function(e){var r=payback(e,p);if(r.p===null)cuBack=-1;else if(cuBack!==-1&&(cuBack===null||r.p>cuBack))cuBack=r.p});
@@ -796,7 +859,7 @@ function paintHero(p){
    '<div class="hmain">'+
     '<div style="min-width:0;flex:1"><span class="lbl">Safe to spend</span>'+
      '<span class="big mono">'+m(sts)+'</span>'+
-     '<span class="state" style="color:var(--onsage)">'+sub+'</span></div>'+
+     '<span class="state" style="color:var(--onsage)">'+subTxt+'</span></div>'+
     '<div class="ring"><svg width="58" height="58" viewBox="0 0 62 62" role="img" aria-label="'+pct+' percent of this period’s spending money used">'+
       '<circle cx="31" cy="31" r="25" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="6"/>'+
       '<circle cx="31" cy="31" r="25" fill="none" stroke="'+ringCol+'" stroke-width="6" stroke-linecap="round"'+
@@ -808,14 +871,28 @@ function paintHero(p){
    '<div id="hd" style="display:'+(heroOpen?'block':'none')+'">'+
     '<div class="hsep"></div>'+
     spark('#C9A961','var(--onsage)')+
-    (list.length?list.map(function(e){
-      return '<div class="hrow"><span>'+esc(e.name)+'</span>'+
-        '<span style="display:flex;align-items:center;gap:9px">'+
+    (list.length?'<p class="hcap">Your spending envelopes. Remove one and its money stays in the envelope, it just stops counting toward Safe to spend.</p>'+
+      list.map(function(e){
+      return '<div class="hrow"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.name)+'</span>'+
+        '<span style="display:flex;align-items:center;gap:10px;flex:0 0 auto">'+
         '<span class="mono">'+m(bal(e.id,p))+'</span>'+
-        '<button class="dmv" data-dm="'+e.id+'" aria-label="Move out of safe to spend">\u2193</button></span></div>'}).join('')
+        '<button class="hrm" data-dm="'+e.id+'" aria-label="Remove '+esc(e.name)+' from safe to spend">Remove</button></span></div>'}).join('')
      :'<p class="hempty">Nothing in your spending envelopes yet.</p>')+
-    (com>0?'<div class="hrow dim"><span>Committed, not counted</span><span class="mono">'+m(com)+'</span></div>':'')+
-    '<button id="hsort" class="hbtn">Sort which envelopes count</button>'+
+    // the list alone never matched the big number, because money already gone comes off it.
+    // So the drawer finishes the sum: envelopes, less what is gone, equals Safe to spend.
+    ((cu||ovr)?'<div class="hrow hsum"><span>In spending envelopes</span><span class="mono">'+m(pool)+'</span></div>'+
+      '<p class="hcap" style="margin:10px 0 2px">Already spent, so it comes off</p>'+
+      cuL.map(function(e){return '<div class="hrow"><span style="min-width:0">'+esc(e.name)+
+        '<span class="hnote">catching up, '+cuWhen(e,p)+'</span></span>'+
+        '<span class="mono" style="color:var(--amber)">'+m(bal(e.id,p))+'</span></div>'}).join('')+
+      overspentList(p).map(function(e){return '<div class="hrow"><span style="min-width:0">'+esc(e.name)+
+        '<span class="hnote">overspent, cover it from Buffer</span></span>'+
+        '<span class="mono" style="color:#E2A294">'+m(bal(e.id,p))+'</span></div>'}).join('')+
+      '<div class="hrow htot"><span>Safe to spend</span><span class="mono">'+m(sts)+'</span></div>'+
+      (pool-ovr-cu<0?'<p class="hcap" style="margin-top:6px">What is already gone is more than your spending envelopes hold, so nothing is safe to spend until it is caught up.</p>':'')
+     :(list.length?'<div class="hrow htot"><span>Safe to spend</span><span class="mono">'+m(sts)+'</span></div>':''))+
+    (com>0?'<div class="hrow dim" style="margin-top:8px"><span>Committed, not counted</span><span class="mono">'+m(com)+'</span></div>':'')+
+    '<button id="hsort" class="hbtn">Choose which envelopes count</button>'+
    '</div></div>';
   $('#hb').onclick=function(ev){
     var dm=ev.target.closest('[data-dm]');
@@ -824,9 +901,10 @@ function paintHero(p){
     heroOpen=!heroOpen;$('#hd').style.display=heroOpen?'block':'none';$('#hh').textContent=heroOpen?'close':'open'}}
 function setDisc(id,v){
   var e=byId(id);if(!e)return;
+  var was=e.disc===undefined?null:e.disc;
   put('env/'+id+'/disc',v);
-  bar(esc(e.name)+(v?' counts as safe to spend again':' moved to Committed, out of safe to spend'),
-    function(){setPath(data,'env/'+id+'/disc',v?false:true)})}
+  bar(esc(e.name)+(v?' counts toward Safe to spend again':' removed from Safe to spend. Its money stays put.'),
+    function(){setPath(data,'env/'+id+'/disc',was)})}
 function spark(stroke,cap){
   var v=dailySpend(14),mx=Math.max.apply(null,v.concat([1]));
   var pts=v.map(function(x,i){return (i/(v.length-1)*300).toFixed(1)+','+(36-(x/mx)*30).toFixed(1)}).join(' ');
@@ -857,11 +935,11 @@ function paintRib(){
       var d=dt.getDate(),mo=dt.getMonth(),y=dt.getFullYear(),key=y+'-'+mo+'-'+d;
       var L=dayLook(d,mo,y),b=el('button','cell');b.dataset.k=key;
       b.style.cssText='flex:0 0 46px;width:46px;aspect-ratio:auto;padding:6px 0 5px;border:1px solid '+L.bd+';background:'+L.bg+';color:'+L.fg+
-        (d===1&&i>0?';margin-left:14px':'');
+        (d===1&&i>0?';margin-left:14px':'')+(key===dayOpen?';outline:2px solid var(--gold)':'');
       b.innerHTML='<span style="font-size:10px;opacity:.72">'+
         (d===1?dt.toLocaleDateString('en-US',{month:'short'}).toUpperCase():WD[dt.getDay()].charAt(0))+'</span>'+dayInner(d,mo,y);
       b.onclick=function(){dayOpen=dayOpen===key?null:key;
-        Array.prototype.forEach.call(r.children,function(x){x.style.outline=x.dataset.k===dayOpen?'2px solid var(--ink)':'none'});
+        Array.prototype.forEach.call(r.children,function(x){x.style.outline=x.dataset.k===dayOpen?'2px solid var(--gold)':'none'});
         paintDay()};
       r.appendChild(b)})(i)}
   paintDay()}
@@ -886,9 +964,14 @@ function tileData(p){
   var groc=everyday().filter(function(e){return /groc/i.test(e.name)})[0]||everyday()[0];
   var ovr=overspent(p),ie=inEnvelopes(p),ltf=leftToFund(p),tg=targetTotal(p),cu=catchingUp(p),cuL=cuList(p);
   var nO=overspentList(p).length;
+  var onlyCu=!ovr&&cu>0,cuBy=null;
+  cuL.forEach(function(e){var r=payback(e,p);if(r.p===null)cuBy=false;else if(cuBy!==false&&(cuBy===null||r.p>cuBy))cuBy=r.p});
+  cuBy=cuBy?pShort(cuBy):null;
   var cuSub=cu?'<span style="color:var(--amber)">'+(cuL.length===1?esc(cuL[0].name):cuL.length)+' catching up</span>':'';
-  var cuHtml=cu?'<p style="font-size:10.5px;letter-spacing:.06em;color:var(--amber);margin:12px 0 2px">CATCHING UP, NO ACTION NEEDED</p>'+
+  var cuHtml=cu?'<p style="font-size:10.5px;letter-spacing:.06em;color:var(--amber);margin:'+(ovr?'12px':'4px')+' 0 2px">'+(ovr?'CATCHING UP, NO ACTION NEEDED':'NO ACTION NEEDED. THESE PAY THEMSELVES BACK')+'</p>'+
     cuL.map(function(e){return kv(esc(e.name)+' <span style="font-size:11px;color:var(--mut)">\u00B7 '+cuWhen(e,p)+'</span>',m(bal(e.id,p)),'var(--amber)')}).join(''):'';
+  var ovIds=overspentList(p).concat(cuL).map(function(e){return e.id});
+  var ovTx=drTxHtml(envsTxList(ovIds,p),p,ovIds.length?'Nothing logged to these envelopes yet this pay period.':'Nothing overspent this pay period.');
   var everyF=0;everyday().forEach(function(e){everyF+=totalFunded(e.id,p)});
   var allF=0;envs().forEach(function(e){allF+=Math.max(0,totalFunded(e.id,p))});
   var gb=groc?bal(groc.id,p):0,gf=groc?totalFunded(groc.id,p):0,gs=groc?totalSpent(groc.id,p):0;
@@ -896,12 +979,16 @@ function tileData(p){
    {k:1,n:groc?groc.name:'Groceries',v:m0(gb),ic:'\u{1F6D2}',chip:'var(--warnbg)',bar:'var(--brasst)',
     pct:gf?Math.max(0,gb/gf):0,vc:gb<0?'var(--red)':'var(--ink)',
     sub:gf?Math.round(Math.min(100,gs/gf*100))+'% used':'not funded yet',
-    rows:groc?[['Funded, all in',m(gf)],['Spent',m(gs)],['Left',m(gb),gb<0?'var(--red)':null]]:[]},
+    rows:groc?[['Funded, all in',m(gf)],['Spent',m(gs)],['Left',m(gb),gb<0?'var(--red)':null]]:[],extra:groc?envTxHtml(groc,p):''},
+   // with nothing to cover but something catching up, the square says that, in amber, rather
+   // than "Overspent $0" sitting next to $128 that has been spent ahead
+   onlyCu?{k:2,n:'Catching up',v:m0(cu),ic:'',chip:'',bar:'var(--amber)',pct:everyF?Math.min(1,cu/everyF):0,vc:'var(--amber)',
+     sub:cuL.length+' envelope'+(cuL.length===1?'':'s')+(cuBy?', back by '+cuBy:''),rows:[],extra:cuHtml+ovTx}:
    {k:2,n:'Overspent',v:m0(ovr),ic:'\u26A0\uFE0F',chip:'var(--badbg)',bar:'var(--redf)',
-    pct:everyF?Math.min(1,ovr/everyF):0,vc:'var(--red)',sub:(ovr?nO+' envelope'+(nO===1?'':'s'):cu?'none to cover':'\u2713 none')+(cuSub?' \u00B7 '+cuSub:''),
-    rows:overspentList(p).map(function(e){return [e.name,m(bal(e.id,p)),'var(--red)']}),extra:cuHtml},
+    pct:everyF?Math.min(1,ovr/everyF):0,vc:'var(--red)',sub:(ovr?nO+' to cover':'\u2713 none')+(cu?' \u00B7 <span style="color:var(--amber)">'+m0(cu)+' catching up</span>':''),
+    rows:overspentList(p).map(function(e){return [e.name,m(bal(e.id,p)),'var(--red)']}),extra:cuHtml+ovTx},
    {k:3,n:'In envelopes',v:m0(ie),ic:'\u2709\uFE0F',chip:'var(--okbg)',bar:'var(--green)',
-    pct:allF?Math.min(1,ie/allF):0,vc:ie<0?'var(--red)':'var(--ink)',sub:(ovr+cu)?'after '+m0(ovr+cu)+' overspent':'across '+envs().length+' envelopes',
+    pct:allF?Math.min(1,ie/allF):0,vc:ie<0?'var(--red)':'var(--ink)',sub:'every envelope, bills too',
     rows:[['Everyday spending',m(spendPool(p))],
       ['Committed',m(committedEnvs().reduce(function(s,e){return s+Math.max(0,bal(e.id,p))},0))],
       ['Bills set aside',m(bills().reduce(function(s,e){return s+Math.max(0,bal(e.id,p))},0))],
@@ -917,6 +1004,23 @@ function tileData(p){
       envs().filter(function(e){return !paidIn(e,p)&&target(e,p)-alloc(e.id,p)>0})
         .sort(function(a,b){return (target(b,p)-alloc(b.id,p))-(target(a,p)-alloc(a.id,p))}).slice(0,8)
         .map(function(e){return [e.name+' needs',m(target(e,p)-alloc(e.id,p))]}))}]}
+/* Every transaction that touched one envelope in a pay period, newest first, tappable to edit */
+function envTxList(id,p){return envsTxList([id],p)}
+function envsTxList(ids,p){var a=[],on={};ids.forEach(function(i){on[i]=1});
+  for(var k in data.tx){var t=data.tx[k];if(!t||pidOf(t.date)!==p)continue;
+    if(on[t.env]||on[t.from]||on[t.to]){t.id=k;a.push(t)}}
+  return a.sort(function(x,y){return x.date<y.date?1:x.date>y.date?-1:(parseInt(y.id)||0)-(parseInt(x.id)||0)})}
+/* the drawer under a Home square: this period's transactions, newest three, then Show more */
+var drMore=false;
+function drTxHtml(a,p,none){var sp=0;a.forEach(function(t){if(t.kind==='exp')sp+=t.amt});
+  var show=drMore?a:a.slice(0,3);
+  return '<p style="font-size:10.5px;letter-spacing:.08em;color:var(--mut);margin:14px 0 4px;display:flex;justify-content:space-between">'+
+    '<span>RECENT \u00B7 '+pShort(p).toUpperCase()+' PAY PERIOD</span><span>'+a.length+' logged \u00B7 '+m(sp)+'</span></p>'+
+    (a.length?'<div class="drtx" style="margin:0 -14px -13px;border-top:1px solid var(--hair)">'+show.map(function(t){return txLine(t,t.id)}).join('')+
+      (a.length>3?'<button id="drmore" style="width:100%;border:0;border-radius:0;border-top:1px solid var(--hair);'+
+        'color:var(--brasst);font-size:13px;padding:11px">'+(drMore?'Show less':'Show more ('+(a.length-3)+')')+'</button>':'')+'</div>'
+      :'<p class="muted" style="margin:6px 0 2px">'+none+'</p>')}
+function envTxHtml(e,p){return drTxHtml(envTxList(e.id,p),p,'Nothing logged to '+esc(e.name)+' yet this pay period.')}
 function paintTiles(p){
   var T=tileData(p),g=$('#tiles');g.innerHTML='';
   T.forEach(function(t){
@@ -927,7 +1031,7 @@ function paintTiles(p){
      '<span class="pad"><span class="lbl">'+esc(t.n)+'</span>'+
      '<span class="val" style="color:'+t.vc+'">'+t.v+'</span>'+
      '<span class="sub">'+t.sub+'</span></span>';
-    b.onclick=function(){tileOpen=tileOpen===t.k?null:t.k;
+    b.onclick=function(){tileOpen=tileOpen===t.k?null:t.k;drMore=false;
       Array.prototype.forEach.call(g.children,function(x){x.className='tile'+(+x.dataset.k===tileOpen?' sel':'')});
       paintDrawer(p)};
     g.appendChild(b)});
@@ -944,7 +1048,9 @@ function paintDrawer(p){
    (showCover?'<button id="dcov" class="cta" style="margin-top:12px;'+(bb>0?'':'background:var(--mutbg);color:var(--mut)')+'">'+
      (bb>0?'Cover from buffer · '+m(bb)+' available':'Buffer is empty')+'</button>':'')+
    (t.extra||''),
-   'padding:13px 14px;margin-top:10px');
+   'padding:13px 14px;margin-top:10px;overflow:hidden');
+  wireTx(d.querySelector('.drtx'),'home');
+  if($('#drmore'))$('#drmore').onclick=function(){drMore=!drMore;paintDrawer(p)};
   if($('#dcov'))$('#dcov').onclick=function(){
     if(bufBal(p)<=0)return toast('The buffer has nothing in it yet');
     openUseBuf(p,'home')}}
@@ -963,10 +1069,11 @@ function paintRecent(){
   list.sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0});
   var r=$('#recent');
   if(!list.length){r.innerHTML='<p class="empty">Nothing logged yet. Hit the \uFF0B to add your first expense.</p>';return}
-  var show=recentAll?list.slice(0,60):list.slice(0,8);
+  // newest three, the rest one tap away
+  var show=recentAll?list.slice(0,60):list.slice(0,3);
   r.innerHTML=show.map(function(t){return txLine(t,t.id)}).join('')+
-    (list.length>8?'<button id="rmore" style="width:100%;border:0;border-radius:0;border-top:1px solid var(--hair);'+
-      'color:var(--brasst);font-size:13px;padding:11px">'+(recentAll?'Show less':'Show all '+list.length)+'</button>':'');
+    (list.length>3?'<button id="rmore" style="width:100%;border:0;border-radius:0;border-top:1px solid var(--hair);'+
+      'color:var(--brasst);font-size:13px;padding:11px">'+(recentAll?'Show less':'Show more ('+(list.length-3)+')')+'</button>':'');
   wireTx(r,'home');
   if($('#rmore'))$('#rmore').onclick=function(){recentAll=!recentAll;paintRecent()}}
 /* ========== BUDGET ========== */
@@ -1480,9 +1587,26 @@ function fromSplit(){
   if(lines.length===1&&stot){lines[0].a=stot;stot='';actLine=0}
   else if(!lines.length&&stot){loose=stot;stot='';actLine=0}
   if(lines.length>1&&actLine>=lines.length)actLine=lines.length-1}
+/* What you have typed on Add is kept: leaving for your bank app and coming back, a sync
+   from the other phone, even iPhone closing the app in the background. It is only cleared
+   when you log it, tap Clear, or start an expense from a particular envelope. */
+var addPayee='',addDate='',DRAFT='hb_add_draft';
+function draftHas(){return !!(addPayee||loose||stot||lines.length)}
+function saveDraft(){try{
+  if(!lines.length&&!loose&&!stot&&!addPayee){localStorage.removeItem(DRAFT);return}
+  localStorage.setItem(DRAFT,JSON.stringify({lines:lines,stot:stot,loose:loose,payee:addPayee,date:addDate,kind:txKind,actLine:actLine,t:Date.now()}))}catch(e){}}
+function loadDraft(maxAge){try{
+  var d=JSON.parse(localStorage.getItem(DRAFT)||'null');
+  if(!d||Date.now()-d.t>maxAge)return false;
+  lines=(d.lines||[]).filter(function(l){return l&&data.env[l.id]});stot=d.stot||'';loose=d.loose||'';
+  addPayee=d.payee||'';addDate=d.date||'';txKind=d.kind==='inc'?'inc':'exp';actLine=d.actLine==null?0:d.actLine;
+  if(actLine>=lines.length)actLine=lines.length>1?-1:0;
+  return true}catch(e){return false}}
+function clearDraft(){addPayee='';addDate='';try{localStorage.removeItem(DRAFT)}catch(e){}}
 function goAdd(envId){
-  lines=envId?[{id:envId,a:'',who:cfg.member||''}]:[];
-  loose='';chipQ='';stot='';actLine=0;tab='add';sub=null;render()}
+  if(envId){lines=[{id:envId,a:'',who:cfg.member||''}];loose='';stot='';actLine=0;clearDraft()}
+  else if(!draftHas())loadDraft(6*3600e3);       // the plus picks up where you left off
+  chipQ='';tab='add';sub=null;render()}
 function screenAdd(){
   if(!envs().length&&txKind!=='inc'){
     $('#app').innerHTML=hdr('Add expense',today())+'<div class="body"><p class="empty">Make an envelope first, over on Budget.</p></div>';return}
@@ -1496,15 +1620,17 @@ function screenAdd(){
     (envs().length>10?'<input id="cq" placeholder="Find an envelope" value="'+esc(chipQ)+'" style="margin-bottom:8px">':'')+
     '<div id="chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>'+
     '<div id="lines"></div>'+
-    '<input id="payee" placeholder="'+(inc?'Where it came from, like Paycheck':'Payee, like Commissary')+'" style="margin:6px 0 10px">'+
-    '<input id="tdate" type="date" value="'+today()+'" style="margin-bottom:12px">'+
+    '<input id="payee" value="'+esc(addPayee)+'" placeholder="'+(inc?'Where it came from, like Paycheck':'Payee, like Commissary')+'" style="margin:6px 0 10px">'+
+    '<input id="tdate" type="date" value="'+(addDate||today())+'" style="margin-bottom:12px">'+
     '<div id="pad" class="pad" style="margin-bottom:12px"></div>'+
     '<button id="go" class="cta">Log it</button></div>';
   [['exp','Expense'],['inc','Income']].forEach(function(x){
     var b=el('button',txKind===x[0]?'on':'',x[1]);
-    b.onclick=function(){txKind=x[0];render()};$('#kseg').appendChild(b)});
+    b.onclick=function(){txKind=x[0];saveDraft();render()};$('#kseg').appendChild(b)});
   if($('#cq')){var cq=$('#cq');cq.oninput=function(){chipQ=cq.value;paintChips()}}
-  $('#clr').onclick=function(){lines=[];actLine=0;stot='';loose='';paintChips();paintLines()};
+  $('#clr').onclick=function(){lines=[];actLine=0;stot='';loose='';clearDraft();$('#payee').value='';$('#tdate').value=today();paintChips();paintLines()};
+  $('#payee').oninput=function(){addPayee=this.value;saveDraft()};
+  $('#tdate').oninput=$('#tdate').onchange=function(){addDate=this.value===today()?'':this.value;saveDraft()};
   $('#tot').onclick=function(){if(lines.length>1){actLine=-1;paintLines()}};
   envs().forEach(function(e){
     var c=el('button','pill',esc(e.name));c.dataset.k=e.id;c.dataset.n=e.name.toLowerCase();
@@ -1562,7 +1688,7 @@ function screenAdd(){
         setPath(data,'tx/'+id,{kind:txKind,amt:a,env:l.id,payee:py||(inc?'Income':'Expense'),date:dt,who:l.who||cfg.member||''})})}
     cache();if(rootRef)rootRef.child('tx').set(data.tx);
     var n=made.length;
-    lines=lines.length?[{id:lines[0].id,a:'',who:lines[0].who}]:[];loose='';stot='';actLine=0;
+    lines=lines.length?[{id:lines[0].id,a:'',who:lines[0].who}]:[];loose='';stot='';actLine=0;clearDraft();
     render();
     bar('Logged '+m(tot)+(py?' at '+esc(py):'')+(n>1?' across '+n+' envelopes':''),
       function(){made.forEach(function(id){delete data.tx[id]})})};
@@ -1573,7 +1699,8 @@ function paintChips(){
     var on=false;lines.forEach(function(l){if(l.id===c.dataset.k)on=true});
     c.className='pill'+(on?' on':'');
     c.style.display=(!q||on||c.dataset.n.indexOf(q)>=0)?'':'none'})}
-function paintLines(){
+function paintLines(){paintLines0();if(tab==='add')saveDraft()}
+function paintLines0(){
   var inc=txKind==='inc';
   if(!lines.length){
     $('#tot').innerHTML=card('<p class="muted" style="text-align:center;margin-bottom:4px">'+
@@ -1650,7 +1777,7 @@ function screenCal(){
   $('#sm').onclick=function(){calOpen=!calOpen;paintSum(y,mo)};
   markSel();paintSum(y,mo)}
 function markSel(){Array.prototype.forEach.call($('#cg').children,function(x){
-  if(x.dataset)x.style.outline=(+x.dataset.d===calSel)?'2px solid var(--ink)':'none'})}
+  if(x.dataset)x.style.outline=(+x.dataset.d===calSel)?'2px solid var(--gold)':'none'})}
 function paintSum(y,mo){
   var d=calSel,ds=y+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
   var bl=billsOn(d),ns=data.notes[ds]||[],isPay=(d===1||d===15),p=pidOf(ds);
@@ -2187,14 +2314,30 @@ function wireExp(){
 var tab='home',sub=null;
 var TABS=[['home','\u{1F3E0}','Home'],['budget','\u2709\uFE0F','Budget'],['add','+',''],['cal','\u{1F4C5}','Calendar'],['more','\u2630','More']];
 function go(t){tab=t;sub=null;if(t!=='more')moreOpen=null;kidEdit=null;vEdit=null;window.scrollTo(0,0);render()}
-function paintNav(){
-  var n=$('#nav');n.innerHTML='';
+/* The bar is built once and kept, so the pill can glide between tabs instead of being
+   redrawn in place. A tap moves the pill first and draws the new screen a frame later,
+   so the slide starts the instant the finger lands. */
+function buildNav(){
+  var n=$('#nav');n.innerHTML='';n.dataset.built='1';
   TABS.forEach(function(t){
-    var b=el('button',tab===t[0]?'on':'');
+    var b=el('button','');b.dataset.t=t[0];
     b.innerHTML=t[0]==='add'?'<span class="fab">+</span>':'<span style="font-size:19px">'+t[1]+'</span><span>'+t[2]+'</span>';
     b.setAttribute('aria-label',t[2]||'Add expense');
-    b.onclick=function(){t[0]==='add'?goAdd(null):go(t[0])};
+    b.onclick=function(){
+      markNav(t[0]);
+      requestAnimationFrame(function(){requestAnimationFrame(function(){t[0]==='add'?goAdd(null):go(t[0])})})};
     n.appendChild(b)})}
+function markNav(key,instant){
+  var n=$('#nav'),on=null;if(!n||!n.querySelectorAll)return;
+  Array.prototype.forEach.call(n.querySelectorAll('button'),function(b){
+    var a=b.dataset.t===key;b.classList.toggle('on',a);if(a)on=b});
+  movePill(on,instant)}
+function movePill(){}   // the pill no longer travels; kept so older calls do nothing
+var navFirst=true;
+function paintNav(){
+  var n=$('#nav');
+  if(!n.dataset||n.dataset.built!=='1'||!n.querySelector||!n.querySelector('button'))buildNav();
+  markNav(tab,navFirst);navFirst=false}
 function render(){
   paintNav();
   // Home opens on paper, every other screen keeps its green header
@@ -2210,22 +2353,35 @@ function render(){
   else screenMore()}
 function boot(){
   if(sweepLoose())cache();          // also fixes the local copy, before anything is drawn
+  try{var last=JSON.parse(localStorage.getItem('hb_last')||'null');
+    if(last&&last.tab==='add'&&Date.now()-last.t<30*60e3&&loadDraft(30*60e3))tab='add'}catch(e){}
   if(cfg.code)connect();
   if(!cfg.member){var ids=Object.keys(data.members);if(ids.length)cfg.member=ids[0];saveCfg()}
   render();
+  try{requestAnimationFrame(function(){markNav(tab,true)})}catch(e){}
   if(!cfg.code)setTimeout(function(){toast('More \u2192 Settings to set your household code and deposits')},600)}
-window.addEventListener('visibilitychange',function(){if(!document.hidden)render()});
+var pendingRender=false;
+function typing(){try{var a=document.activeElement;
+  return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&document.getElementById('app').contains(a))}catch(e){return false}}
+function formScreen(){return tab==='add'||sub==='txform'||sub==='envform'||sub==='fund'}
+document.addEventListener('focusout',function(){setTimeout(function(){
+  if(pendingRender&&!typing()){pendingRender=false;render()}},60)});
+window.addEventListener('visibilitychange',function(){
+  if(document.hidden){if(tab==='add')saveDraft();try{localStorage.setItem('hb_last',JSON.stringify({tab:tab,t:Date.now()}))}catch(e){}return}
+  if(!formScreen()&&!typing())render()});
 /* iOS can lose track of the pinned bottom bar when the page changes height under it (a card
    opening, the Catching up switch showing its dates) and leave it floating mid-page. Whenever
    the page height changes, take the bar out and put it straight back, which makes iOS place it
    against the bottom edge again. Same frame, so nothing flickers. */
 var navH=0;
 function reseatNav(){try{var n=document.getElementById('nav');if(!n)return;
-  n.style.display='none';void n.offsetHeight;n.style.display=''}catch(e){}}
+  // nudge, never hide: hiding the frosted bar for even one frame makes iPhone redraw its glass
+  n.style.bottom='1px';void n.offsetHeight;n.style.bottom=''}catch(e){}}
+var reseatT=null;
 function watchH(){try{var h=document.documentElement.scrollHeight;
-  if(h!==navH){navH=h;requestAnimationFrame(reseatNav)}}catch(e){}}
+  if(h!==navH){navH=h;clearTimeout(reseatT);reseatT=setTimeout(function(){reseatNav();markNav(tab,true)},520)}}catch(e){}}
 try{if(window.ResizeObserver)new ResizeObserver(watchH).observe(document.getElementById('app'));
-  window.addEventListener('resize',function(){requestAnimationFrame(reseatNav)})}catch(e){}
+  window.addEventListener('resize',function(){requestAnimationFrame(function(){reseatNav();markNav(tab,true)})})}catch(e){}
 boot();
 </script>
 </body>
